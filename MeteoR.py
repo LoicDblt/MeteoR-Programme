@@ -18,8 +18,8 @@ class couleur:
 	# Test le nombre d'arguments
 from sys import argv
 
-if len(argv) != 3:
-	print("%s|ERREUR| Usage : python3 %s <Identifiant SFTP> <Mot de passe SFTP>%s\n" %(couleur.ROUGE, argv[0], couleur.FINSTYLE))
+if len(argv) != 5:
+	print("%s|ERREUR| Usage : python3 %s <Adresse SFTP> <Port SFTP> <Identifiant SFTP> <Mot de passe SFTP>%s\n" %(couleur.ROUGE, argv[0], couleur.FINSTYLE))
 	exit()
 
 	# Message d'initilisation
@@ -34,11 +34,9 @@ def hashing(entree):
 	return hashing
 
 	# Demande et vérification des identifiants
-hash_nom = hashing(argv[1])
-hash_mdp = hashing(argv[2])
 if (
-	hash_nom != "b717456caf8f0dcf4f0731e9691a6d801326b8f5fa5d61519064715a32800dd8" or
-	hash_mdp != "bf615597de06885bde0376a4e9e89e23a06c5db51f9a96771fbba2c7f32f9912"
+	hashing(argv[3]) != "b717456caf8f0dcf4f0731e9691a6d801326b8f5fa5d61519064715a32800dd8" or
+	hashing(argv[4]) != "bf615597de06885bde0376a4e9e89e23a06c5db51f9a96771fbba2c7f32f9912"
 ):
 	print("%s|ERREUR| Identifiant ou mot de passe incorrect, veuillez réessayer%s\n" %(couleur.ROUGE, couleur.FINSTYLE))
 	exit()
@@ -61,9 +59,6 @@ from sqlite3 import connect, PARSE_COLNAMES, PARSE_DECLTYPES
 from time import sleep, strftime
 
 ## Variables et divers ###################################
-	# Adresse et port SFTP
-HOTE = "x21r0.ftp.infomaniak.com"
-PORT = 22
 
 	# Chemins
 OPEN_SANS = ImageFont.truetype("/usr/local/share/fonts/open-sans-600.ttf", 72)
@@ -127,14 +122,13 @@ def connexion_sftp():
 	global sftp
 	global erreur_sftp
 	try:
-		session_sftp = Transport(HOTE, PORT)
-		session_sftp.connect(username = argv[1], password = argv[2])
+		session_sftp = Transport(argv[1], int(argv[2]))
+		session_sftp.connect(username = argv[3], password = argv[4])
 		sftp = SFTPClient.from_transport(session_sftp)
 		erreur_sftp = False
-		return
 	except:
 		erreur_sftp = True
-		print(couleur.JAUNE + "|Erreur - " + strftime("%d/%m ") + "à " + strftime("%H:%M") + "| La connexion SFTP au serveur a échoué" + couleur.FINSTYLE)
+		print(couleur.JAUNE + "|Erreur - " + strftime("%d/%m ") + "à " + strftime("%H:%M") + "| La connexion par SFTP au serveur a échoué" + couleur.FINSTYLE)
 
 def deconnexion_sftp():
 	if erreur_sftp == False:
@@ -157,7 +151,7 @@ def gestion_envoi(nom_fichier):
 				return True
 			except:
 				sleep(5*nbr_essais)
-	print(couleur.JAUNE + "|Erreur - " + strftime("%d/%m ") + "à " + strftime("%H:%M") + "| L'envoi du fichier %s a échoué" %nom_fichier + couleur.FINSTYLE)
+		print(couleur.JAUNE + "|Erreur - " + strftime("%d/%m ") + "à " + strftime("%H:%M") + "| L'envoi du fichier %s a échoué" %nom_fichier + couleur.FINSTYLE)
 	return False
 
 ## Récupération des valeurs minimales et maximales #######
