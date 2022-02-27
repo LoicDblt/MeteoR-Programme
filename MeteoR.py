@@ -140,7 +140,7 @@ def envoi_fichier(nom_fichier):
 	if nom_fichier == NOM_BDD_DONNEES:
 		chemin = "%s/bdd/%s" %(CHEMIN_SERVEUR, nom_fichier)
 	else:
-		chemin = "%s/img/graphs%s" %(CHEMIN_SERVEUR, nom_fichier)
+		chemin = "%s/img/graphs/%s" %(CHEMIN_SERVEUR, nom_fichier)
 	sftp.put(nom_fichier, chemin)
 
 def gestion_envoi(nom_fichier):
