@@ -254,18 +254,15 @@ while True:
 	# Graphiques
 	maintenant = datetime.utcnow()
 	if (maintenant.hour == temps_graphique.hour):
+		# Calcul heure prochain graphique
+		temps_graphique = datetime.utcnow() + timedelta(hours = 1)
+	
+		# Ajout de la moyenne dans la bdd
 		curseur_donnees.execute("""SELECT AVG(temperature_ambiante), AVG(humidite_ambiante) FROM meteor_donnees WHERE date_mesure >= datetime('now', 'localtime', '-1 hour', '1 minute') AND temperature_ambiante IS NOT NULL AND humidite_ambiante IS NOT NULL""")
 		moyenne_donnees = curseur_donnees.fetchall()[0]
 
-		# Changement d'heure (été, +1 heure)
-		if (moyenne_donnees[0] == None or moyenne_donnees[1] == None):
-			curseur_donnees.execute("""SELECT AVG(temperature_ambiante), AVG(humidite_ambiante) FROM meteor_donnees WHERE date_mesure >= datetime('now', 'localtime', '-2 hours', '1 minute') AND temperature_ambiante IS NOT NULL AND humidite_ambiante IS NOT NULL""")
-			moyenne_donnees = curseur_donnees.fetchall()[0]
-
 		curseur_graphs.execute("""INSERT INTO meteor_graphs (date_mesure, temperature_ambiante, humidite_ambiante) VALUES (datetime('now', 'localtime'), %f, %f)""" %(round(moyenne_donnees[0]/1, 1), round(moyenne_donnees[1]/1, 1)))
 		bdd_graphs.commit()
-
-		temps_graphique = datetime.utcnow() + timedelta(hours = 1)
 
 		# Graphique sur 1 jour
 		curseur_graphs.execute("""SELECT date_mesure FROM meteor_graphs WHERE date_mesure >= datetime('now', 'localtime', '-1 day', '-3 minutes')""")
@@ -301,7 +298,7 @@ while True:
 			copy2("./%s" %NOM_BDD_GRAPHS, "./%s/graphs_sauvegarde.db" %CHEMIN_SAUVEGARDE)
 
 			# BDD des graphiques
-			curseur_graphs.execute("""DELETE FROM meteor_graphs WHERE date_mesure <= datetime('now', 'localtime', '-7 days', '-3 minutes')""")
+			curseur_graphs.execute("""DELETE FROM meteor_graphs WHERE date_mesure <= datetime('now', 'localtime', '-28 days', '-3 minutes')""")
 			bdd_graphs.commit()
 
 			# BDD des données
