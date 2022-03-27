@@ -29,14 +29,14 @@ print("%s|INFO| Initialisation du programme, veuillez patienter...%s\n" %(couleu
 
 ## SFTP ##################################################
 from hashlib import sha256
-def hashing(entree):
-	hashing = sha256(str(entree).encode("UTF-8")).hexdigest()
-	return hashing
+def hachage(entree):
+	hachage = sha256(str(entree).encode("UTF-8")).hexdigest()
+	return hachage
 
 	# Demande et vérification des identifiants
 if (
-	hashing(argv[3]) != "b717456caf8f0dcf4f0731e9691a6d801326b8f5fa5d61519064715a32800dd8" or
-	hashing(argv[4]) != "bf615597de06885bde0376a4e9e89e23a06c5db51f9a96771fbba2c7f32f9912"
+	hachage(argv[3]) != "b717456caf8f0dcf4f0731e9691a6d801326b8f5fa5d61519064715a32800dd8" or
+	hachage(argv[4]) != "bf615597de06885bde0376a4e9e89e23a06c5db51f9a96771fbba2c7f32f9912"
 ):
 	print("%s|ERREUR| Identifiant ou mot de passe incorrect, veuillez réessayer%s\n" %(couleur.ROUGE, couleur.FINSTYLE))
 	exit()
@@ -69,9 +69,9 @@ if (path.isdir("./%s" %CHEMIN_SAUVEGARDE) == False):
 	mkdir("./%s" %CHEMIN_SAUVEGARDE)
 
 	# Formatages
+FORMATAGE = DateFormatter("%d/%m %H:%M")
 use("Agg")
 setlocale(LC_ALL, "")
-FORMATAGE = DateFormatter("%d/%m %H:%M")
 plt.rcParams["font.family"] = "sans-serif"
 plt.rcParams["font.sans-serif"] = "Open Sans SemiBold"
 plt.rcParams["font.size"] = 8
@@ -206,18 +206,9 @@ while True:
 	connexion_sftp()
 
 	# Calcul du temps de départ
-	temps_arrivee = (datetime.now() + timedelta(minutes = 3)).replace(second = 0, microsecond = 0)
+	temps_arrivee = (datetime.utcnow() + timedelta(minutes = 3)).replace(second = 0, microsecond = 0)
 	if (temps_arrivee.minute > 0 and temps_arrivee.minute < 3):
 		temps_arrivee = temps_arrivee.replace(minute = 0)
-
-	# Détection de changement d'heure
-	verif_changement_heure = int((temps_arrivee - datetime.now()).total_seconds())
-	if verif_changement_heure < 0:
-		print("%s|INFO| Passage à l'heure d'hiver%s" %(couleur.BLEUC, couleur.FINSTYLE))
-		temps_arrivee = (temps_arrivee + timedelta(hours = 1))
-	elif verif_changement_heure > 180:
-		print("%s|INFO| Passage à l'heure d'été%s" %(couleur.BLEUC, couleur.FINSTYLE))
-		temps_arrivee = (temps_arrivee + timedelta(hours = -1))
 
 	# Données
 		# Température
@@ -251,7 +242,7 @@ while True:
 		# Envoi de la BDD au serveur web
 	gestion_envoi(NOM_BDD_DONNEES)
 
-		# Renvoi des graphiques qui ont échoué
+		# Renvoi les graphiques qui ont échoué
 	for i in range(len(status_envois)):
 		if (
 			status_envois[i][0] == False and
@@ -261,25 +252,8 @@ while True:
 			status_envois[i][0] = True
 
 	# Graphiques
-		# Changement d'heure (hiver, -1 heure)
-	curseur_graphs.execute("""SELECT MAX(date_mesure) as "[timestamp]" FROM meteor_graphs""")
-	derniere_mesure = curseur_graphs.fetchall()[0][0]
-	maintenant = datetime.now()
-	if (
-		(
-			derniere_mesure == None and
-			maintenant.hour == temps_graphique.hour
-		)
-		or
-		(
-			derniere_mesure != None and
-			(
-				maintenant.hour == temps_graphique.hour and
-				maintenant.hour != derniere_mesure.hour or
-				maintenant.date() != derniere_mesure.date()
-			)
-		)
-	):
+	maintenant = datetime.utcnow()
+	if (maintenant.hour == temps_graphique.hour):
 		curseur_donnees.execute("""SELECT AVG(temperature_ambiante), AVG(humidite_ambiante) FROM meteor_donnees WHERE date_mesure >= datetime('now', 'localtime', '-1 hour', '1 minute') AND temperature_ambiante IS NOT NULL AND humidite_ambiante IS NOT NULL""")
 		moyenne_donnees = curseur_donnees.fetchall()[0]
 
@@ -291,7 +265,7 @@ while True:
 		curseur_graphs.execute("""INSERT INTO meteor_graphs (date_mesure, temperature_ambiante, humidite_ambiante) VALUES (datetime('now', 'localtime'), %f, %f)""" %(round(moyenne_donnees[0]/1, 1), round(moyenne_donnees[1]/1, 1)))
 		bdd_graphs.commit()
 
-		temps_graphique = datetime.now() + timedelta(hours=1)
+		temps_graphique = datetime.utcnow() + timedelta(hours = 1)
 
 		# Graphique sur 1 jour
 		curseur_graphs.execute("""SELECT date_mesure FROM meteor_graphs WHERE date_mesure >= datetime('now', 'localtime', '-1 day', '-3 minutes')""")
@@ -349,8 +323,8 @@ while True:
 	deconnexion_sftp()
 
 	# Attente pour la mesure suivante
-	duree_attente = (temps_arrivee - datetime.now()).total_seconds()
+	duree_attente = (temps_arrivee - datetime.utcnow()).total_seconds()
 	if (duree_attente >= 0):
 		sleep(duree_attente)
 	else:
-		print("%s|ERREUR| Durée d'attente calculée inférieure à 0 | temps_arrivee = %d - datetime.now = %d%s\n" %(temps_arrivee, datetime.now(), couleur.ROUGE, couleur.FINSTYLE))
+		print("%s|ERREUR| Durée d'attente calculée inférieure à 0 | temps_arrivee = %d - datetime.utcnow = %d%s\n" %(temps_arrivee, datetime.utcnow(), couleur.ROUGE, couleur.FINSTYLE))
