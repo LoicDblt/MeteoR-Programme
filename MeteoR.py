@@ -91,8 +91,8 @@ while True:
 			erreur_capteur_affichee = True
 
 	# Gestion du temps
-erreur_sftp = deja_fait = False
-temps_graphique = datetime.now() + timedelta(hours=1)
+erreur_sftp = False
+temps_graphique = datetime.utcnow() + timedelta(hours = 1)
 
 	# Constantes
 NOM_BDD_DONNEES = "donnees.db"
@@ -168,11 +168,11 @@ def graphs(temp_humi_bdd, jours, temp_humi_type, date_brute, temps):
 	ax = f.add_subplot(111)
 	date = [dt.datetime.strptime("%s" %d, "%Y-%m-%d %H:%M:%S") for d in date_brute] # converti la date
 	if temps == 24:
-		ax.xaxis.set_major_locator(HourLocator(interval=4)) # interval d'heures entre chaque tick sur l'axe x
+		ax.xaxis.set_major_locator(HourLocator(interval = 4)) # interval d'heures entre chaque tick sur l'axe x
 	elif temps == 72:
-		ax.xaxis.set_major_locator(HourLocator(interval=12))
+		ax.xaxis.set_major_locator(HourLocator(interval = 12))
 	else:
-		ax.xaxis.set_major_locator(HourLocator(interval=24))
+		ax.xaxis.set_major_locator(HourLocator(interval = 24))
 	ax.xaxis.set_major_formatter(FORMATAGE) # formate la date
 	ax.yaxis.set_major_formatter(FormatStrFormatter("%.1f")) # arrondi à 0.1
 	ax.yaxis.set_major_locator(plt.MaxNLocator(6)) # nombre maximal de ticks sur l'axe y
@@ -309,10 +309,10 @@ while True:
 	dessin = ImageDraw.Draw(affichage_img)
 	dessin.rectangle((0, 0, affichage_largeur, affichage_hauteur), outline = 0, fill = 0)
 	dessin.text((affichage_abscisse, affichage_haut), "Date : " + str(strftime("%d %B")), font = POLICE, fill = TRANSPARENT)
-	dessin.text((affichage_abscisse, affichage_haut+16), "Température : " + str(temperature) + "°C", font = POLICE, fill = 255)
-	dessin.text((affichage_abscisse, affichage_haut+32), "Humidité : " + str(humidite) + "%", font = POLICE, fill = TRANSPARENT)
-	dessin.text((affichage_abscisse, affichage_haut+48), "Dernière mise à jour : ", font = POLICE, fill = TRANSPARENT)
-	dessin.text((affichage_abscisse, affichage_haut+56), str(strftime("%H:%M")), font = POLICE, fill = TRANSPARENT)
+	dessin.text((affichage_abscisse, affichage_haut + 16), "Température : " + str(temperature) + "°C", font = POLICE, fill = 255)
+	dessin.text((affichage_abscisse, affichage_haut + 32), "Humidité : " + str(humidite) + "%", font = POLICE, fill = TRANSPARENT)
+	dessin.text((affichage_abscisse, affichage_haut + 48), "Dernière mise à jour : ", font = POLICE, fill = TRANSPARENT)
+	dessin.text((affichage_abscisse, affichage_haut + 56), str(strftime("%H:%M")), font = POLICE, fill = TRANSPARENT)
 	affichage.image(affichage_img)
 	affichage.display()
 
