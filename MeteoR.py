@@ -48,9 +48,6 @@ from board import I2C
 from datetime import datetime, timedelta
 from hashlib import sha256
 from locale import LC_ALL, setlocale
-from matplotlib import use, pyplot as plt
-from matplotlib.dates import DateFormatter, HourLocator, datetime as dt
-from matplotlib.ticker import FormatStrFormatter
 from os import path, mkdir
 from paramiko import Transport, SFTPClient
 from PIL import Image, ImageDraw, ImageFont
@@ -61,7 +58,6 @@ from time import sleep, strftime
 ## Variables et divers ###################################
 
 	# Chemins
-OPEN_SANS = ImageFont.truetype("/usr/local/share/fonts/open-sans-600.ttf", 72)
 CHEMIN_SERVEUR = "/home/clients/062d753a5000ca0d94fdbe882000fa5b/web"
 CHEMIN_SAUVEGARDE = "sauvegardes"
 
@@ -69,15 +65,10 @@ if (path.isdir("./%s" %CHEMIN_SAUVEGARDE) == False):
 	mkdir("./%s" %CHEMIN_SAUVEGARDE)
 
 	# Formatages
-FORMATAGE = DateFormatter("%d/%m %H:%M")
-use("Agg")
 setlocale(LC_ALL, "")
-plt.rcParams["font.family"] = "sans-serif"
-plt.rcParams["font.sans-serif"] = "Open Sans SemiBold"
-plt.rcParams["font.size"] = 8
 
 	# Status
-status_envois = [[True, 24], [True, 72], [True, 168]]
+status_envoi = False
 erreur_capteur_affichee = False
 
 	# Initialisation du capteur Si7021
@@ -137,10 +128,7 @@ def deconnexion_sftp():
 
 ## Envoi de fichiers par SFTP ############################
 def envoi_fichier(nom_fichier):
-	if nom_fichier == NOM_BDD_DONNEES:
-		chemin = "%s/bdd/%s" %(CHEMIN_SERVEUR, nom_fichier)
-	else:
-		chemin = "%s/img/graphs/%s" %(CHEMIN_SERVEUR, nom_fichier)
+	chemin = "%s/bdd/%s" %(CHEMIN_SERVEUR, nom_fichier)
 	sftp.put(nom_fichier, chemin)
 
 def gestion_envoi(nom_fichier):
@@ -159,31 +147,6 @@ def recup_max_min(max_min_op, max_min_temp_humi):
 	curseur_donnees.execute("""SELECT %s(%s) FROM meteor_donnees""" %(max_min_op, max_min_temp_humi))
 	max_min_temp_humi_valeur = curseur_donnees.fetchall()
 	return max_min_temp_humi_valeur[0][0]
-
-## Création du graphique #################################
-def graphs(temp_humi_bdd, jours, temp_humi_type, date_brute, temps):
-	curseur_graphs.execute("""SELECT %s FROM meteor_graphs WHERE date_mesure >= datetime('now', 'localtime', '-%d days', '-3 minutes')""" %(temp_humi_bdd, jours))
-	temp_humi_valeurs = curseur_graphs.fetchall()
-	f = plt.figure()
-	ax = f.add_subplot(111)
-	date = [dt.datetime.strptime("%s" %d, "%Y-%m-%d %H:%M:%S") for d in date_brute] # converti la date
-	if temps == 24:
-		ax.xaxis.set_major_locator(HourLocator(interval = 4)) # interval d'heures entre chaque tick sur l'axe x
-	elif temps == 72:
-		ax.xaxis.set_major_locator(HourLocator(interval = 12))
-	else:
-		ax.xaxis.set_major_locator(HourLocator(interval = 24))
-	ax.xaxis.set_major_formatter(FORMATAGE) # formate la date
-	ax.yaxis.set_major_formatter(FormatStrFormatter("%.1f")) # arrondi à 0.1
-	ax.yaxis.set_major_locator(plt.MaxNLocator(6)) # nombre maximal de ticks sur l'axe y
-	plt.plot(date, temp_humi_valeurs, "#0074FF")
-	plt.xticks(rotation = 32)
-	plt.savefig("graph_%s_%d.png" %(temp_humi_type, temps), dpi = 256, transparent = True)
-	plt.close(f)
-	img = Image.open("graph_%s_%d.png" %(temp_humi_type, temps))
-	img.crop((65, 126, 65+1551, 126+1095)).save("graph_%s_%d.webp" %(temp_humi_type, temps), "WEBP") # (gauche, haut, gauche+largeur, haut+hauteur)
-	img.close()
-	return gestion_envoi("graph_%s_%d.webp" %(temp_humi_type, temps))
 
 ## Ecran #################################################
 affichage = SSD1306_128_64(rst=None)
@@ -239,17 +202,16 @@ while True:
 		curseur_donnees.execute("""INSERT INTO meteor_donnees (date_mesure, min_humi) VALUES (datetime('now', 'localtime'), %f)""" %humidite)
 		bdd_donnees.commit()
 
-		# Envoi de la BDD au serveur web
+		# Envoi de la BDD des données actus au serveur web
 	gestion_envoi(NOM_BDD_DONNEES)
 
-		# Renvoi les graphiques qui ont échoué
-	for i in range(len(status_envois)):
-		if (
-			status_envois[i][0] == False and
-			gestion_envoi("graph_temperature_%s.webp" %(status_envois[i][1])) == True and
-			gestion_envoi("graph_humidite_%s.webp" %(status_envois[i][1])) == True
-		):
-			status_envois[i][0] = True
+
+		# Renvoi la BDD des moyennes si cela avait échoué
+	if (
+		status_envoi == False and
+		gestion_envoi(NOM_BDD_GRAPHS) == True
+	):
+		status_envoi = True
 
 	# Graphiques
 	maintenant = datetime.utcnow()
@@ -264,32 +226,8 @@ while True:
 		curseur_graphs.execute("""INSERT INTO meteor_graphs (date_mesure, temperature_ambiante, humidite_ambiante) VALUES (datetime('now', 'localtime'), %f, %f)""" %(round(moyenne_donnees[0]/1, 1), round(moyenne_donnees[1]/1, 1)))
 		bdd_graphs.commit()
 
-		# Graphique sur 1 jour
-		curseur_graphs.execute("""SELECT date_mesure FROM meteor_graphs WHERE date_mesure >= datetime('now', 'localtime', '-1 day', '-3 minutes')""")
-		date_brute = curseur_graphs.fetchall()
-		if (
-			graphs("temperature_ambiante", 1, "temperature", date_brute, 24) == False or
-			graphs("humidite_ambiante", 1, "humidite", date_brute, 24) == False
-		):
-			status_envois[0][0] = False
-
-		# Graphique sur 3 jours
-		curseur_graphs.execute("""SELECT date_mesure FROM meteor_graphs WHERE date_mesure >= datetime('now', 'localtime', '-3 days', '-3 minutes')""")
-		date_brute = curseur_graphs.fetchall()
-		if (
-			graphs("temperature_ambiante", 3, "temperature", date_brute, 72) == False or
-			graphs("humidite_ambiante", 3, "humidite", date_brute, 72) == False
-		):
-			status_envois[1][0] = False
-
-		# Graphique sur 1 semaine
-		curseur_graphs.execute("""SELECT date_mesure FROM meteor_graphs WHERE date_mesure >= datetime('now', 'localtime', '-7 days', '-3 minutes')""")
-		date_brute = curseur_graphs.fetchall()
-		if (
-			graphs("temperature_ambiante", 7, "temperature", date_brute, 168) == False or
-			graphs("humidite_ambiante", 7, "humidite", date_brute, 168) == False
-		):
-			status_envois[2][0] = False
+		# Envoi de la BDD des moyennes
+		status_envoi = gestion_envoi(NOM_BDD_GRAPHS)
 
 		# Nettoyage des BDD
 		if maintenant.hour == 00:
@@ -297,8 +235,8 @@ while True:
 			copy2("./%s" %NOM_BDD_DONNEES, "./%s/donnees_sauvegarde.db" %CHEMIN_SAUVEGARDE)
 			copy2("./%s" %NOM_BDD_GRAPHS, "./%s/graphs_sauvegarde.db" %CHEMIN_SAUVEGARDE)
 
-			# BDD des graphiques
-			curseur_graphs.execute("""DELETE FROM meteor_graphs WHERE date_mesure <= datetime('now', 'localtime', '-28 days', '-3 minutes')""")
+			# BDD des moyennes
+			curseur_graphs.execute("""DELETE FROM meteor_graphs WHERE date_mesure <= datetime('now', 'localtime', '-30 days', '-3 minutes')""")
 			bdd_graphs.commit()
 
 			# BDD des données
