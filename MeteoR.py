@@ -217,18 +217,8 @@ while True:
 	if (maintenant.hour == temps_moyenne.hour):
 		# Calcul heure prochaine moyenne
 		temps_moyenne = datetime.utcnow() + timedelta(hours = 1)
-	
-		# Ajout de la moyenne dans la bdd
-		curseur_donnees.execute("""SELECT AVG(temperature_ambiante), AVG(humidite_ambiante) FROM meteor_donnees WHERE date_mesure >= datetime('now', 'localtime', '-1 hour', '1 minute') AND temperature_ambiante IS NOT NULL AND humidite_ambiante IS NOT NULL""")
-		moyenne_donnees = curseur_donnees.fetchall()[0]
 
-		curseur_graphs.execute("""INSERT INTO meteor_graphs (date_mesure, temperature_ambiante, humidite_ambiante) VALUES (datetime('now', 'localtime'), %f, %f)""" %(round(moyenne_donnees[0]/1, 1), round(moyenne_donnees[1]/1, 1)))
-		bdd_graphs.commit()
-
-		# Envoi de la BDD des moyennes
-		status_envoi = gestion_envoi(NOM_BDD_GRAPHS)
-
-		# Nettoyage des BDD
+		# Nettoyage des BDD une fois par jour
 		if maintenant.hour == 00:
 			# Sauvegardes
 			copy2("./%s" %NOM_BDD_DONNEES, "./%s/donnees_sauvegarde.db" %CHEMIN_SAUVEGARDE)
@@ -241,6 +231,18 @@ while True:
 			# BDD des données
 			curseur_donnees.execute("""DELETE FROM meteor_donnees WHERE (max_temp NOT IN (SELECT MAX(max_temp) FROM meteor_donnees) OR min_temp NOT IN (SELECT MIN(min_temp) FROM meteor_donnees) OR max_humi NOT IN (SELECT MAX(max_humi) FROM meteor_donnees) OR min_humi NOT IN (SELECT MIN(min_humi) FROM meteor_donnees)) OR (temperature_ambiante IS NOT NULL AND humidite_ambiante IS NOT NULL AND date_mesure NOT IN (SELECT MAX(date_mesure) FROM meteor_donnees))""")
 			bdd_donnees.commit()
+
+		# Ajout de la moyenne dans la bdd
+		curseur_donnees.execute("""SELECT AVG(temperature_ambiante), AVG(humidite_ambiante) FROM meteor_donnees WHERE date_mesure >= datetime('now', 'localtime', '-1 hour', '1 minute') AND temperature_ambiante IS NOT NULL AND humidite_ambiante IS NOT NULL""")
+		moyenne_donnees = curseur_donnees.fetchall()[0]
+
+		curseur_graphs.execute("""INSERT INTO meteor_graphs (date_mesure, temperature_ambiante, humidite_ambiante) VALUES (datetime('now', 'localtime'), %f, %f)""" %(round(moyenne_donnees[0]/1, 1), round(moyenne_donnees[1]/1, 1)))
+		bdd_graphs.commit()
+
+		# Envoi de la BDD des moyennes
+		status_envoi = gestion_envoi(NOM_BDD_GRAPHS)
+
+		
 
 	# Ecran
 	dessin = ImageDraw.Draw(affichage_img)
