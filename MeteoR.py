@@ -83,7 +83,7 @@ while True:
 
 	# Gestion du temps
 erreur_sftp = False
-temps_graphique = datetime.utcnow() + timedelta(hours = 1)
+temps_moyenne = datetime.utcnow() + timedelta(hours = 1)
 
 	# Constantes
 NOM_BDD_DONNEES = "donnees.db"
@@ -101,7 +101,7 @@ if bdd_deja_init_float == None:
 	curseur_donnees.execute("""INSERT INTO meteor_donnees (date_mesure, max_temp, min_temp, max_humi, min_humi) VALUES (datetime('now', 'localtime'), 0, 100, 0, 100)""") # initialise les valeurs max et min de température et humidité
 	bdd_donnees.commit()
 
-	# BDD des graphiques
+	# BDD des moyennes
 bdd_graphs = connect(NOM_BDD_GRAPHS, detect_types=PARSE_COLNAMES|PARSE_DECLTYPES)
 curseur_graphs = bdd_graphs.cursor()
 curseur_graphs.execute("""CREATE TABLE IF NOT EXISTS meteor_graphs (date_mesure CHAR, temperature_ambiante FLOAT, humidite_ambiante FLOAT)""")
@@ -202,9 +202,8 @@ while True:
 		curseur_donnees.execute("""INSERT INTO meteor_donnees (date_mesure, min_humi) VALUES (datetime('now', 'localtime'), %f)""" %humidite)
 		bdd_donnees.commit()
 
-		# Envoi de la BDD des données actus au serveur web
+		# Envoi de la BDD des données actuelles au serveur web
 	gestion_envoi(NOM_BDD_DONNEES)
-
 
 		# Renvoi la BDD des moyennes si cela avait échoué
 	if (
@@ -213,11 +212,11 @@ while True:
 	):
 		status_envoi = True
 
-	# Graphiques
+	# Moyennes
 	maintenant = datetime.utcnow()
-	if (maintenant.hour == temps_graphique.hour):
-		# Calcul heure prochain graphique
-		temps_graphique = datetime.utcnow() + timedelta(hours = 1)
+	if (maintenant.hour == temps_moyenne.hour):
+		# Calcul heure prochaine moyenne
+		temps_moyenne = datetime.utcnow() + timedelta(hours = 1)
 	
 		# Ajout de la moyenne dans la bdd
 		curseur_donnees.execute("""SELECT AVG(temperature_ambiante), AVG(humidite_ambiante) FROM meteor_donnees WHERE date_mesure >= datetime('now', 'localtime', '-1 hour', '1 minute') AND temperature_ambiante IS NOT NULL AND humidite_ambiante IS NOT NULL""")
