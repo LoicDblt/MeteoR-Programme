@@ -17,14 +17,14 @@ class couleur:
 	# Test le nombre d'arguments
 from getpass import getpass
 from sys import argv
-if (len(argv) != 6):
-	print("%s|ERREUR| Usage : python3 %s <Adresse SFTP> <Port SFTP> <Chemin sur serveur> <Identifiant SFTP> <Mot de passe SFTP>, appuyez sur une touche pour quitter...%s\n" %(couleur.ROUGE, argv[0], couleur.FINSTYLE))
+if (len(argv) != 5):
+	print("%s|ERREUR| Usage : python3 %s <Adresse SFTP> <Port SFTP> <Chemin sur serveur> <Identifiant SFTP> <Mot de passe SFTP>%s" %(couleur.ROUGE, argv[0], couleur.FINSTYLE))
 	exit()
 
-	# Message d'initilisation
+	# Message d'initialisation
 from os import system
 system("clear")
-print("%s|INFO| Initialisation du programme, veuillez patienter...%s\n" %(couleur.BLEUC, couleur.FINSTYLE))
+print("%s|INFO| Initialisation du programme, veuillez patienter...%s" %(couleur.BLEUC, couleur.FINSTYLE))
 
 ## Import des modules ####################################
 from adafruit_si7021 import SI7021
@@ -62,7 +62,7 @@ while True:
 		break
 	except RuntimeError:
 		if (erreur_capteur_affichee == False):
-			print("%s\n|ERREUR| Initialisation du capteur échouée, correction en cours, veuillez patienter...%s\n" %(couleur.ROUGE, couleur.FINSTYLE))
+			print("%s\n|ERREUR| Initialisation du capteur échouée, correction en cours, veuillez patienter...%s" %(couleur.ROUGE, couleur.FINSTYLE))
 			erreur_capteur_affichee = True
 
 	# Gestion du temps
@@ -104,7 +104,7 @@ def connexion_sftp():
 		erreur_sftp = False
 	except AuthenticationException:
 		if (hors_ligne == False):
-			print(couleur.ROUGE + "|Erreur - " + strftime("%d/%m ") + "à " + strftime("%H:%M") + "| Identifiants de connexion au serveur SFTP erronés.\nFonctionnement hors-ligne jusqu'au relancement du programme..." + couleur.FINSTYLE)
+			print(couleur.ROUGE + "|Erreur - " + strftime("%d/%m ") + "à " + strftime("%H:%M") + "| Identifiants de connexion au serveur SFTP erronés.\nFonctionnement hors-ligne jusqu'au redémarrage du programme..." + couleur.FINSTYLE)
 			hors_ligne = True
 	except:
 		print(couleur.JAUNE + "|Erreur - " + strftime("%d/%m ") + "à " + strftime("%H:%M") + "| La connexion par SFTP au serveur a échoué" + couleur.FINSTYLE)
@@ -154,12 +154,14 @@ POLICE = ImageFont.load_default()
 TRANSPARENT = 255
 
 ## Programme principal ###################################
+	# Messages d'information
 system("clear")
 print("%s|INFO| Initialisation terminée%s" %(couleur.BLEUC, couleur.FINSTYLE))
 print("%s|INFO| Les messages d'erreur s'afficheront dans cette console%s\n" %(couleur.BLEUF, couleur.FINSTYLE))
 
 	# Attente mise en route des services réseaux
 sleep(5)
+
 while True:
 	if (hors_ligne == False):
 		connexion_sftp()
