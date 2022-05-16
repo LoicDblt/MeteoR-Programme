@@ -12,14 +12,12 @@ class couleur:
 	BLEUF = "\033[94m"
 	JAUNE = "\033[93m"
 	ROUGE = "\033[91m"
-	VERT = "\033[32m"
 	FINSTYLE = "\033[0m"
 
 	# Test le nombre d'arguments
 from sys import argv
-
-if len(argv) != 5:
-	print("%s|ERREUR| Usage : python3 %s <Adresse SFTP> <Port SFTP> <Identifiant SFTP> <Mot de passe SFTP>%s\n" %(couleur.ROUGE, argv[0], couleur.FINSTYLE))
+if len(argv) != 6:
+	print("%s|ERREUR| Usage : python3 %s <Adresse SFTP> <Port SFTP> <Chemin sur serveur> <Identifiant SFTP> <Mot de passe SFTP>%s\n" %(couleur.ROUGE, argv[0], couleur.FINSTYLE))
 	exit()
 
 	# Message d'initilisation
@@ -27,7 +25,7 @@ from os import system
 system("clear")
 print("%s|INFO| Initialisation du programme, veuillez patienter...%s\n" %(couleur.BLEUC, couleur.FINSTYLE))
 
-## SFTP ##################################################
+## Accès serveur #########################################
 from hashlib import sha256
 def hachage(entree):
 	hachage = sha256(str(entree).encode("UTF-8")).hexdigest()
@@ -35,13 +33,13 @@ def hachage(entree):
 
 	# Demande et vérification des identifiants
 if (
-	hachage(argv[3]) != "b717456caf8f0dcf4f0731e9691a6d801326b8f5fa5d61519064715a32800dd8" or
-	hachage(argv[4]) != "bf615597de06885bde0376a4e9e89e23a06c5db51f9a96771fbba2c7f32f9912"
+	hachage(argv[4]) != "b717456caf8f0dcf4f0731e9691a6d801326b8f5fa5d61519064715a32800dd8" or
+	hachage(argv[5]) != "bf615597de06885bde0376a4e9e89e23a06c5db51f9a96771fbba2c7f32f9912"
 ):
 	print("%s|ERREUR| Identifiant ou mot de passe incorrect, veuillez réessayer%s\n" %(couleur.ROUGE, couleur.FINSTYLE))
 	exit()
 
-	# Modules à importer
+## Import des modules ####################################
 from adafruit_si7021 import SI7021
 from Adafruit_SSD1306 import SSD1306_128_64
 from board import I2C
@@ -56,9 +54,8 @@ from sqlite3 import connect, PARSE_COLNAMES, PARSE_DECLTYPES
 from time import localtime, sleep, strftime
 
 ## Variables et divers ###################################
-
 	# Chemins
-CHEMIN_SERVEUR = "/home/clients/062d753a5000ca0d94fdbe882000fa5b/web"
+CHEMIN_SERVEUR = argv[3]
 CHEMIN_SAUVEGARDE = "sauvegardes"
 
 if (path.isdir("./%s" %CHEMIN_SAUVEGARDE) == False):
@@ -215,35 +212,35 @@ while True:
 	# Calcul et enregistrement des moyennes
 	maintenant = datetime.utcnow()
 	if (maintenant.hour == temps_moyenne.hour):
-		# Calcul heure prochaine moyenne
+			# Calcul heure prochaine moyenne
 		temps_moyenne = datetime.utcnow() + timedelta(hours = 1)
 
-		# Ajout de la moyenne dans la BDD
+			# Ajout de la moyenne dans la BDD
 		curseur_donnees.execute("""SELECT AVG(temperature_ambiante), AVG(humidite_ambiante) FROM meteor_donnees WHERE date_mesure >= datetime('now', 'localtime', '-1 hour', '1 minute') AND temperature_ambiante IS NOT NULL AND humidite_ambiante IS NOT NULL""")
 		moyenne_donnees = curseur_donnees.fetchall()[0]
 
-		# Vérification que les données existes (passage de UTC+1 à UTC+2)
+			# Vérification que les données existes (passage de UTC+1 à UTC+2)
 		if (moyenne_donnees[0] == None or moyenne_donnees[1] == None):
 			curseur_graphs.execute("""INSERT INTO meteor_graphs (date_mesure, temperature_ambiante, humidite_ambiante) VALUES (datetime('now', 'localtime'), %f, %f)""" %(round(moyenne_donnees[0]/1, 1), round(moyenne_donnees[1]/1, 1)))
 			bdd_graphs.commit()
 
-			# Envoi de la BDD des moyennes
+				# Envoi de la BDD des moyennes
 			status_envoi = gestion_envoi(NOM_BDD_GRAPHS)
 
-		# Nettoyage des BDD, une fois par jour à minuit
+			# Nettoyage des BDD, une fois par jour à minuit (en fonction du fuseau)
 		if (
 			(localtime().tm_isdst == 1 and maintenant.hour == 22) or
 			(localtime().tm_isdst == 0 and maintenant.hour == 23)
 		):
-			# Sauvegardes
+				# Sauvegardes
 			copy2("./%s" %NOM_BDD_DONNEES, "./%s/donnees_sauvegarde.db" %CHEMIN_SAUVEGARDE)
 			copy2("./%s" %NOM_BDD_GRAPHS, "./%s/graphs_sauvegarde.db" %CHEMIN_SAUVEGARDE)
 
-			# BDD des moyennes
+				# BDD des moyennes
 			curseur_graphs.execute("""DELETE FROM meteor_graphs WHERE date_mesure <= datetime('now', 'localtime', '-31 days', '-3 minutes')""")
 			bdd_graphs.commit()
 
-			# BDD des données
+				# BDD des données
 			curseur_donnees.execute("""DELETE FROM meteor_donnees WHERE (max_temp NOT IN (SELECT MAX(max_temp) FROM meteor_donnees) OR min_temp NOT IN (SELECT MIN(min_temp) FROM meteor_donnees) OR max_humi NOT IN (SELECT MAX(max_humi) FROM meteor_donnees) OR min_humi NOT IN (SELECT MIN(min_humi) FROM meteor_donnees)) OR (temperature_ambiante IS NOT NULL AND humidite_ambiante IS NOT NULL AND date_mesure NOT IN (SELECT MAX(date_mesure) FROM meteor_donnees))""")
 			bdd_donnees.commit()
 
