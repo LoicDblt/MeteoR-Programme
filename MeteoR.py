@@ -15,29 +15,16 @@ class couleur:
 	FINSTYLE = "\033[0m"
 
 	# Test le nombre d'arguments
+from getpass import getpass
 from sys import argv
-if len(argv) != 6:
-	print("%s|ERREUR| Usage : python3 %s <Adresse SFTP> <Port SFTP> <Chemin sur serveur> <Identifiant SFTP> <Mot de passe SFTP>%s\n" %(couleur.ROUGE, argv[0], couleur.FINSTYLE))
+if (len(argv) != 6):
+	print("%s|ERREUR| Usage : python3 %s <Adresse SFTP> <Port SFTP> <Chemin sur serveur> <Identifiant SFTP> <Mot de passe SFTP>, appuyez sur une touche pour quitter...%s\n" %(couleur.ROUGE, argv[0], couleur.FINSTYLE))
 	exit()
 
 	# Message d'initilisation
 from os import system
 system("clear")
 print("%s|INFO| Initialisation du programme, veuillez patienter...%s\n" %(couleur.BLEUC, couleur.FINSTYLE))
-
-## Accès serveur #########################################
-from hashlib import sha256
-def hachage(entree):
-	hachage = sha256(str(entree).encode("UTF-8")).hexdigest()
-	return hachage
-
-	# Demande et vérification des identifiants
-if (
-	hachage(argv[4]) != "b717456caf8f0dcf4f0731e9691a6d801326b8f5fa5d61519064715a32800dd8" or
-	hachage(argv[5]) != "bf615597de06885bde0376a4e9e89e23a06c5db51f9a96771fbba2c7f32f9912"
-):
-	print("%s|ERREUR| Identifiant ou mot de passe incorrect, veuillez réessayer%s\n" %(couleur.ROUGE, couleur.FINSTYLE))
-	exit()
 
 ## Import des modules ####################################
 from adafruit_si7021 import SI7021
@@ -47,7 +34,7 @@ from datetime import datetime, timedelta
 from hashlib import sha256
 from locale import LC_ALL, setlocale
 from os import path, mkdir
-from paramiko import Transport, SFTPClient
+from paramiko import Transport, SFTPClient, AuthenticationException
 from PIL import Image, ImageDraw, ImageFont
 from shutil import copy2
 from sqlite3 import connect, PARSE_COLNAMES, PARSE_DECLTYPES
@@ -65,8 +52,13 @@ if (path.isdir("./%s" %CHEMIN_SAUVEGARDE) == False):
 setlocale(LC_ALL, "")
 
 	# Status
-status_envoi = False
+status_envoi = True
 erreur_capteur_affichee = False
+hors_ligne = False
+
+	# Identifiants SFTP
+identifiant = argv[4]
+mot_de_passe = argv[5]
 
 	# Initialisation du capteur Si7021
 while True:
@@ -74,7 +66,7 @@ while True:
 		capteur = SI7021(I2C())
 		break
 	except RuntimeError:
-		if erreur_capteur_affichee == False:
+		if (erreur_capteur_affichee == False):
 			print("%s\n|ERREUR| Initialisation du capteur échouée, correction en cours, veuillez patienter...%s\n" %(couleur.ROUGE, couleur.FINSTYLE))
 			erreur_capteur_affichee = True
 
@@ -94,7 +86,7 @@ curseur_donnees.execute("""CREATE TABLE IF NOT EXISTS meteor_donnees (date_mesur
 curseur_donnees.execute("""SELECT MIN(max_humi) FROM meteor_donnees""")
 bdd_deja_init = curseur_donnees.fetchall()
 bdd_deja_init_float = bdd_deja_init[0][0] # détermine si la base de données est déjà initialisée
-if bdd_deja_init_float == None:
+if (bdd_deja_init_float == None):
 	curseur_donnees.execute("""INSERT INTO meteor_donnees (date_mesure, max_temp, min_temp, max_humi, min_humi) VALUES (datetime('now', 'localtime'), 0, 100, 0, 100)""") # initialise les valeurs max et min de température et humidité
 	bdd_donnees.commit()
 
@@ -109,17 +101,22 @@ def connexion_sftp():
 	global session_sftp
 	global sftp
 	global erreur_sftp
+	global hors_ligne
 	try:
 		session_sftp = Transport(argv[1], int(argv[2]))
-		session_sftp.connect(username = argv[3], password = argv[4])
+		session_sftp.connect(username = identifiant, password = mot_de_passe)
 		sftp = SFTPClient.from_transport(session_sftp)
 		erreur_sftp = False
+	except AuthenticationException:
+		if (hors_ligne == False):
+			print(couleur.ROUGE + "|Erreur - " + strftime("%d/%m ") + "à " + strftime("%H:%M") + "| Identifiants de connexion au serveur SFTP erronés.\nFonctionnement hors-ligne jusqu'au relancement du programme..." + couleur.FINSTYLE)
+			hors_ligne = True
 	except:
-		erreur_sftp = True
 		print(couleur.JAUNE + "|Erreur - " + strftime("%d/%m ") + "à " + strftime("%H:%M") + "| La connexion par SFTP au serveur a échoué" + couleur.FINSTYLE)
+		erreur_sftp = True
 
 def deconnexion_sftp():
-	if erreur_sftp == False:
+	if (erreur_sftp == False):
 		if session_sftp: session_sftp.close()
 		if sftp: sftp.close()
 
@@ -129,7 +126,10 @@ def envoi_fichier(nom_fichier):
 	sftp.put(nom_fichier, chemin)
 
 def gestion_envoi(nom_fichier):
-	if erreur_sftp == False:
+	if (
+		erreur_sftp == False and
+		hors_ligne == False
+	):
 		for nbr_essais in range(1, 3):
 			try:
 				envoi_fichier("%s" %nom_fichier)
@@ -146,7 +146,7 @@ def recup_max_min(max_min_op, max_min_temp_humi):
 	return max_min_temp_humi_valeur[0][0]
 
 ## Ecran #################################################
-affichage = SSD1306_128_64(rst=None)
+affichage = SSD1306_128_64(rst = None)
 affichage.begin()
 affichage.clear()
 affichage.display()
@@ -162,8 +162,12 @@ TRANSPARENT = 255
 system("clear")
 print("%s|INFO| Initialisation terminée%s" %(couleur.BLEUC, couleur.FINSTYLE))
 print("%s|INFO| Les messages d'erreur s'afficheront dans cette console%s\n" %(couleur.BLEUF, couleur.FINSTYLE))
+
+	# Attente mise en route des services réseaux
+sleep(5)
 while True:
-	connexion_sftp()
+	if (hors_ligne == False):
+		connexion_sftp()
 
 	# Calcul du temps de départ
 	temps_arrivee = (datetime.utcnow() + timedelta(minutes = 3)).replace(second = 0, microsecond = 0)
@@ -182,20 +186,20 @@ while True:
 	bdd_donnees.commit()
 
 		# Température MAX-MIN
-	if temperature > recup_max_min("MAX", "max_temp"):
+	if (temperature > recup_max_min("MAX", "max_temp")):
 		curseur_donnees.execute("""INSERT INTO meteor_donnees (date_mesure, max_temp) VALUES (datetime('now', 'localtime'), %f)""" %temperature)
 		bdd_donnees.commit()
 
-	if temperature < recup_max_min("MIN", "min_temp"):
+	if (temperature < recup_max_min("MIN", "min_temp")):
 		curseur_donnees.execute("""INSERT INTO meteor_donnees (date_mesure, min_temp) VALUES (datetime('now', 'localtime'), %f)""" %temperature)
 		bdd_donnees.commit()
 
 		# Humidité MAX-MIN
-	if humidite > recup_max_min("MAX", "max_humi"):
+	if (humidite > recup_max_min("MAX", "max_humi")):
 		curseur_donnees.execute("""INSERT INTO meteor_donnees (date_mesure, max_humi) VALUES (datetime('now', 'localtime'), %f)""" %humidite)
 		bdd_donnees.commit()
 
-	if humidite < recup_max_min("MIN", "min_humi"):
+	if (humidite < recup_max_min("MIN", "min_humi")):
 		curseur_donnees.execute("""INSERT INTO meteor_donnees (date_mesure, min_humi) VALUES (datetime('now', 'localtime'), %f)""" %humidite)
 		bdd_donnees.commit()
 
@@ -256,7 +260,8 @@ while True:
 	affichage.display()
 
 	# Fermeture de session SFTP
-	deconnexion_sftp()
+	if (hors_ligne == False):
+		deconnexion_sftp()
 
 	# Attente pour la mesure suivante
 	duree_attente = (temps_arrivee - datetime.utcnow()).total_seconds()
