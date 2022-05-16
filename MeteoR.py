@@ -17,7 +17,7 @@ class couleur:
 	# Test le nombre d'arguments
 from getpass import getpass
 from sys import argv
-if (len(argv) != 5):
+if (len(argv) != 6):
 	print("%s|ERREUR| Usage : python3 %s <Adresse SFTP> <Port SFTP> <Chemin sur serveur> <Identifiant SFTP> <Mot de passe SFTP>%s" %(couleur.ROUGE, argv[0], couleur.FINSTYLE))
 	exit()
 
