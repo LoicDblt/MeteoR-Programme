@@ -220,7 +220,7 @@ while True:
 		moyenne_donnees = curseur_donnees.fetchall()[0]
 
 			# Vérification que les données existes (passage de UTC+1 à UTC+2)
-		if (moyenne_donnees[0] == None or moyenne_donnees[1] == None):
+		if (moyenne_donnees[0] != None and moyenne_donnees[1] != None):
 			curseur_graphs.execute("""INSERT INTO meteor_graphs (date_mesure, temperature_ambiante, humidite_ambiante) VALUES (datetime('now', 'localtime'), %f, %f)""" %(round(moyenne_donnees[0]/1, 1), round(moyenne_donnees[1]/1, 1)))
 			bdd_graphs.commit()
 
