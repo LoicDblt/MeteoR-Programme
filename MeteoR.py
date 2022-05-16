@@ -31,7 +31,6 @@ from adafruit_si7021 import SI7021
 from Adafruit_SSD1306 import SSD1306_128_64
 from board import I2C
 from datetime import datetime, timedelta
-from hashlib import sha256
 from locale import LC_ALL, setlocale
 from os import path, mkdir
 from paramiko import Transport, SFTPClient, AuthenticationException
