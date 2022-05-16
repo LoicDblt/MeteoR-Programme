@@ -55,10 +55,6 @@ status_envoi = True
 erreur_capteur_affichee = False
 hors_ligne = False
 
-	# Identifiants SFTP
-identifiant = argv[4]
-mot_de_passe = argv[5]
-
 	# Initialisation du capteur Si7021
 while True:
 	try:
@@ -103,7 +99,7 @@ def connexion_sftp():
 	global hors_ligne
 	try:
 		session_sftp = Transport(argv[1], int(argv[2]))
-		session_sftp.connect(username = identifiant, password = mot_de_passe)
+		session_sftp.connect(username = argv[4], password = argv[5])
 		sftp = SFTPClient.from_transport(session_sftp)
 		erreur_sftp = False
 	except AuthenticationException:
