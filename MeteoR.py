@@ -84,7 +84,6 @@ while True:
 	# Gestion du temps
 erreur_sftp = False
 temps_moyenne = datetime.utcnow() + timedelta(hours = 1)
-fuseau = 1
 
 	# Constantes
 NOM_BDD_DONNEES = "donnees.db"
@@ -232,22 +231,20 @@ while True:
 			status_envoi = gestion_envoi(NOM_BDD_GRAPHS)
 
 		# Nettoyage des BDD, une fois par jour à minuit
-		if maintenant.hour == 00:
+		if (
+			(localtime().tm_isdst == 1 and maintenant.hour == 22) or
+			(localtime().tm_isdst == 0 and maintenant.hour == 23)
+		):
 			# Sauvegardes
 			copy2("./%s" %NOM_BDD_DONNEES, "./%s/donnees_sauvegarde.db" %CHEMIN_SAUVEGARDE)
 			copy2("./%s" %NOM_BDD_GRAPHS, "./%s/graphs_sauvegarde.db" %CHEMIN_SAUVEGARDE)
 
 			# BDD des moyennes
-				# Détection du fuseau horaire (UTC+1 ou UTC+2)
-			if (localtime().tm_isdst == 1):
-				fuseau = 2
-			else:
-				fuseau = 1
-			curseur_graphs.execute("""DELETE FROM meteor_graphs WHERE date_mesure <= datetime('now', 'localtime', '-31 days', '-%d hours', '-3 minutes')""" %fuseau)
+			curseur_graphs.execute("""DELETE FROM meteor_graphs WHERE date_mesure <= datetime('now', 'localtime', '-31 days', '-3 minutes')""")
 			bdd_graphs.commit()
 
 			# BDD des données
-			curseur_donnees.execute("""DELETE FROM meteor_donnees WHERE (max_temp NOT IN (SELECT MAX(max_temp) FROM meteor_donnees) OR min_temp NOT IN (SELECT MIN(min_temp) FROM meteor_donnees) OR max_humi NOT IN (SELECT MAX(max_humi) FROM meteor_donnees) OR min_humi NOT IN (SELECT MIN(min_humi) FROM meteor_donnees)) OR (temperature_ambiante IS NOT NULL AND humidite_ambiante IS NOT NULL AND date_mesure NOT IN (SELECT MAX(date_mesure) FROM meteor_donnees) AND date_mesure >= datetime('now', 'localtime', '-%d hours', '-3 minutes'))""" %fuseau)
+			curseur_donnees.execute("""DELETE FROM meteor_donnees WHERE (max_temp NOT IN (SELECT MAX(max_temp) FROM meteor_donnees) OR min_temp NOT IN (SELECT MIN(min_temp) FROM meteor_donnees) OR max_humi NOT IN (SELECT MAX(max_humi) FROM meteor_donnees) OR min_humi NOT IN (SELECT MIN(min_humi) FROM meteor_donnees)) OR (temperature_ambiante IS NOT NULL AND humidite_ambiante IS NOT NULL AND date_mesure NOT IN (SELECT MAX(date_mesure) FROM meteor_donnees))""")
 			bdd_donnees.commit()
 
 	# Ecran
