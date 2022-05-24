@@ -17,7 +17,7 @@ class couleur:
 	# Vérifie le nombre d'arguments
 from sys import argv
 if (len(argv) != 6):
-	print("%s|ERREUR| Usage : python3 %s <Adresse SFTP> <Port SFTP> <Chemin du dossier web sur serveur> <Identifiant SFTP> <Mot de passe SFTP>%s" %(couleur.ROUGE, argv[0], couleur.FIN_STYLE))
+	print("%s|ERREUR| Usage : python3 %s <Adresse SFTP> <Port SFTP> <Chemin racine sur le serveur> <Identifiant SFTP> <Mot de passe SFTP>%s" %(couleur.ROUGE, argv[0], couleur.FIN_STYLE))
 	exit()
 
 	# Message d'initialisation
