@@ -1,6 +1,6 @@
 # MeteoR - Programme
 
-# **Présentation**
+## **Présentation**
     Ce programme, écrit en Python 3, permet au travers d'un Raspberry Pi
 possédant une sonde Si7021 et un écran SSD1306, de récupérer la température et
 l'humidité ambiante d'une pièce.
@@ -15,17 +15,19 @@ actuelles, mais aussi au travers dudit site en proposant davantages
 d'informations, telles que l'évolution de la température/humidité dans le temps
 ou encore les minimums et maximums respectifs.
 
-# **Installation**
- ## Sondes
+## **Installation**
+ ### Sondes
     Il est nécessaire d'installer la sonde de température/hygrométrie Si7021,
  ainsi que l'écran SSD1306.  
  Les instructions de montage sont trouvables notamment sur le site d'Adafruit.
 
- ### Liens pour l'assemblage
+ #### Liens pour l'assemblage
  * [Si7021](https://learn.adafruit.com/adafruit-si7021-temperature-plus-humidity-sensor/assembly)
  * [SSD1306](https://learn.adafruit.com/monochrome-oled-breakouts/wiring-128x64-oleds)
  
- ## Dépendances
+ ---
+ 
+ ### Dépendances
     Il est nécessaire d'installer différents modules en amont du lancement du
  programme, soit en utilisant le fichier des dépendances mis à dispotion :
  * ```pip install -r requirements.txt```
@@ -42,7 +44,9 @@ ou encore les minimums et maximums respectifs.
  **Attention !** Il peut être nécessaire de préciser la version de Python en
  usant de ```python3``` et ```pip3```.
 
- ## Programme
+---
+
+ ### Programme
     Une fois le programme récupéré et toutes les étapes précédentes effectuées,
  il suffit de lancer la commande suivante :
 
