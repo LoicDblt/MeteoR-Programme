@@ -12,6 +12,7 @@ class couleur:
 	BLEU_FONCE = "\033[94m"
 	JAUNE = "\033[93m"
 	ROUGE = "\033[91m"
+	VERT = "\033[32m"
 	FIN_STYLE = "\033[0m"
 
 	# Vérifie le nombre d'arguments
@@ -39,9 +40,11 @@ from sqlite3 import connect, PARSE_COLNAMES, PARSE_DECLTYPES
 from time import localtime, sleep, strftime
 
 ## Variables et initialisation ###########################
-	# Chemins
+	# Chemins et noms des BDD
 CHEMIN_DOSSIER_WEB_SERVEUR = argv[3]
 CHEMIN_SAUVEGARDE_LOCAL = "sauvegardes"
+NOM_BDD_DONNEES = "donnees.db"
+NOM_BDD_GRAPHS = "graphs.db"
 
 if (path.isdir("./%s" %CHEMIN_SAUVEGARDE_LOCAL) == False):
 	mkdir("./%s" %CHEMIN_SAUVEGARDE_LOCAL)
@@ -52,9 +55,13 @@ setlocale(LC_ALL, "")
 	# Status
 status_envoi = True
 erreur_capteur_affichee = False
-hors_ligne = False
+erreur_sftp_affichee = False
 
-	# Initialisation du capteur de température et humidité (Si7021)
+	# Gestion du temps
+erreur_sftp = False
+temps_moyenne = datetime.utcnow() + timedelta(hours = 1)
+
+## Capteur de température et d'humidité (Si7021) #########
 while True:
 	try:
 		capteur = SI7021(I2C())
@@ -63,14 +70,6 @@ while True:
 		if (erreur_capteur_affichee == False):
 			print("%s\n|ERREUR| Initialisation du capteur échouée, correction en cours, veuillez patienter...%s" %(couleur.ROUGE, couleur.FIN_STYLE))
 			erreur_capteur_affichee = True
-
-	# Gestion du temps
-erreur_sftp = False
-temps_moyenne = datetime.utcnow() + timedelta(hours = 1)
-
-	# Constantes
-NOM_BDD_DONNEES = "donnees.db"
-NOM_BDD_GRAPHS = "graphs.db"
 
 ## SQLite ################################################
 	# BDD des données
@@ -90,21 +89,38 @@ curseur_graphs = bdd_graphs.cursor()
 curseur_graphs.execute("""CREATE TABLE IF NOT EXISTS meteor_graphs (date_mesure CHAR, temperature_ambiante FLOAT, humidite_ambiante FLOAT)""")
 bdd_graphs.commit()
 
+## Paramétrage de l'écran ################################
+affichage = SSD1306_128_64(rst = None)
+affichage.begin()
+affichage.clear()
+affichage.display()
+affichage_largeur = affichage.width
+affichage_hauteur = affichage.height
+affichage_haut = -2
+affichage_abscisse = 0
+affichage_img = Image.new("1", (affichage_largeur, affichage_hauteur))
+POLICE = ImageFont.load_default()
+TRANSPARENT = 255
+
 ## Connexion par SFTP ####################################
 def connexion_sftp():
 	global session_sftp
 	global sftp
 	global erreur_sftp
-	global hors_ligne
+	global erreur_sftp_affichee
 	try:
 		session_sftp = Transport(argv[1], int(argv[2]))
 		session_sftp.connect(username = argv[4], password = argv[5])
 		sftp = SFTPClient.from_transport(session_sftp)
 		erreur_sftp = False
+		if (erreur_sftp_affichee == True):
+			print(couleur.VERT + "|Info - " + strftime("%d/%m ") + "à " + strftime("%H:%M") + "| Connexion par SFTP rétablie" + couleur.FIN_STYLE)
+			erreur_sftp_affichee = False
 	except AuthenticationException:
-		if (hors_ligne == False):
-			print(couleur.ROUGE + "|Erreur - " + strftime("%d/%m ") + "à " + strftime("%H:%M") + "| Identifiants de connexion au serveur SFTP erronés.\nFonctionnement hors-ligne jusqu'au redémarrage du programme..." + couleur.FIN_STYLE)
-			hors_ligne = True
+		if (erreur_sftp_affichee == False):
+			print(couleur.ROUGE + "|Erreur - " + strftime("%d/%m ") + "à " + strftime("%H:%M") + "| Identifiant ou mot de passe eronné.\nUne nouvelle tentative sera néanmoins effectuée après chaque nouvelle mesure, car une erreur du serveur est possible.\nVeuillez relancer le programme si vous souhaitez modifier les identifiants." + couleur.FIN_STYLE)
+			erreur_sftp_affichee = True
+		erreur_sftp = True
 	except:
 		print(couleur.JAUNE + "|Erreur - " + strftime("%d/%m ") + "à " + strftime("%H:%M") + "| La connexion par SFTP au serveur a échoué" + couleur.FIN_STYLE)
 		erreur_sftp = True
@@ -120,16 +136,13 @@ def envoi_fichier(nom_fichier):
 	sftp.put(nom_fichier, chemin)
 
 def gestion_envoi(nom_fichier):
-	if (
-		erreur_sftp == False and
-		hors_ligne == False
-	):
+	if (erreur_sftp == False):
 		for nbr_essais in range(1, 3):
 			try:
 				envoi_fichier("%s" %nom_fichier)
 				return True
 			except:
-				sleep(5*nbr_essais)
+				sleep(5 * nbr_essais)
 		print(couleur.JAUNE + "|Erreur - " + strftime("%d/%m ") + "à " + strftime("%H:%M") + "| L'envoi du fichier %s a échoué" %nom_fichier + couleur.FIN_STYLE)
 	return False
 
@@ -139,31 +152,17 @@ def recup_max_min(operation, temp_humi):
 	max_min_temp_humi_valeur = curseur_donnees.fetchall()
 	return max_min_temp_humi_valeur[0][0]
 
-## Paramétrage de l'écran ################################
-affichage = SSD1306_128_64(rst = None)
-affichage.begin()
-affichage.clear()
-affichage.display()
-affichage_largeur = affichage.width
-affichage_hauteur = affichage.height
-affichage_haut = -2
-affichage_abscisse = 0
-affichage_img = Image.new("1", (affichage_largeur, affichage_hauteur))
-POLICE = ImageFont.load_default()
-TRANSPARENT = 255
-
 ## Programme principal ###################################
 	# Messages d'information
 system("clear")
-print("%s|INFO| Initialisation terminée%s" %(couleur.BLEU_CLAIR, couleur.FIN_STYLE))
-print("%s|INFO| Les messages d'erreur s'afficheront dans cette console%s\n" %(couleur.BLEU_FONCE, couleur.FIN_STYLE))
+print("%s|Info| Initialisation terminée%s" %(couleur.BLEU_CLAIR, couleur.FIN_STYLE))
+print("%s|Info| Les messages d'erreur s'afficheront dans cette console%s\n" %(couleur.BLEU_FONCE, couleur.FIN_STYLE))
 
-	# Attente mise en route des services réseaux
+	# Attente mise en route des services réseaux de l'OS
 sleep(5)
 
 while True:
-	if (hors_ligne == False):
-		connexion_sftp()
+	connexion_sftp()
 
 	# Calcul du temps de départ
 	temps_arrivee = (datetime.utcnow() + timedelta(minutes = 3)).replace(second = 0, microsecond = 0)
@@ -181,7 +180,7 @@ while True:
 	curseur_donnees.execute("""INSERT INTO meteor_donnees (date_mesure, temperature_ambiante, humidite_ambiante) VALUES (datetime('now', 'localtime'), %f, %f)""" %(temperature, humidite))
 	bdd_donnees.commit()
 
-		# Température MAX-MIN
+		# Température max-min
 	if (temperature > recup_max_min("MAX", "max_temp")):
 		curseur_donnees.execute("""INSERT INTO meteor_donnees (date_mesure, max_temp) VALUES (datetime('now', 'localtime'), %f)""" %temperature)
 		bdd_donnees.commit()
@@ -190,7 +189,7 @@ while True:
 		curseur_donnees.execute("""INSERT INTO meteor_donnees (date_mesure, min_temp) VALUES (datetime('now', 'localtime'), %f)""" %temperature)
 		bdd_donnees.commit()
 
-		# Humidité MAX-MIN
+		# Humidité max-min
 	if (humidite > recup_max_min("MAX", "max_humi")):
 		curseur_donnees.execute("""INSERT INTO meteor_donnees (date_mesure, max_humi) VALUES (datetime('now', 'localtime'), %f)""" %humidite)
 		bdd_donnees.commit()
@@ -219,20 +218,17 @@ while True:
 		curseur_donnees.execute("""SELECT AVG(temperature_ambiante), AVG(humidite_ambiante) FROM meteor_donnees WHERE date_mesure >= datetime('now', 'localtime', '-1 hour', '1 minute') AND temperature_ambiante IS NOT NULL AND humidite_ambiante IS NOT NULL""")
 		moyenne_donnees = curseur_donnees.fetchall()[0]
 
-			# Vérification que les données existes (passage de UTC+1 à UTC+2)
+			# Vérification que les données existes (changement de fuseau été/hiver)
 		if (moyenne_donnees[0] != None and moyenne_donnees[1] != None):
 			curseur_graphs.execute("""INSERT INTO meteor_graphs (date_mesure, temperature_ambiante, humidite_ambiante) VALUES (datetime('now', 'localtime'), %f, %f)""" %(round(moyenne_donnees[0]/1, 1), round(moyenne_donnees[1]/1, 1)))
 			bdd_graphs.commit()
-
-				# Envoi de la BDD des graphs
 			status_envoi = gestion_envoi(NOM_BDD_GRAPHS)
 
-			# Nettoyage des BDD, une fois par jour, à minuit (en fonction du fuseau)
+			# Sauvegarde puis nettoyage des BDD, une fois par jour, à minuit (en fonction du fuseau local français)
 		if (
 			(localtime().tm_isdst == 1 and maintenant.hour == 22) or
 			(localtime().tm_isdst == 0 and maintenant.hour == 23)
 		):
-				# Sauvegardes en local des BDD de la journée avant suppression
 			copy2("./%s" %NOM_BDD_DONNEES, "./%s/donnees_sauvegarde.db" %CHEMIN_SAUVEGARDE_LOCAL)
 			copy2("./%s" %NOM_BDD_GRAPHS, "./%s/graphs_sauvegarde.db" %CHEMIN_SAUVEGARDE_LOCAL)
 
@@ -244,7 +240,7 @@ while True:
 			curseur_donnees.execute("""DELETE FROM meteor_donnees WHERE (max_temp NOT IN (SELECT MAX(max_temp) FROM meteor_donnees) OR min_temp NOT IN (SELECT MIN(min_temp) FROM meteor_donnees) OR max_humi NOT IN (SELECT MAX(max_humi) FROM meteor_donnees) OR min_humi NOT IN (SELECT MIN(min_humi) FROM meteor_donnees)) OR (temperature_ambiante IS NOT NULL AND humidite_ambiante IS NOT NULL AND date_mesure NOT IN (SELECT MAX(date_mesure) FROM meteor_donnees))""")
 			bdd_donnees.commit()
 
-	# Affichage des informations sur l'écran (SSD1306)
+	# Affichage des informations sur l'écran
 	dessin = ImageDraw.Draw(affichage_img)
 	dessin.rectangle((0, 0, affichage_largeur, affichage_hauteur), outline = 0, fill = 0)
 	dessin.text((affichage_abscisse, affichage_haut), "Date : " + str(strftime("%d %B")), font = POLICE, fill = TRANSPARENT)
@@ -256,8 +252,7 @@ while True:
 	affichage.display()
 
 	# Fermeture de la session SFTP
-	if (hors_ligne == False):
-		deconnexion_sftp()
+	deconnexion_sftp()
 
 	# Attente pour la mesure suivante
 	duree_attente = (temps_arrivee - datetime.utcnow()).total_seconds()
