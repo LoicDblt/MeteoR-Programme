@@ -49,7 +49,7 @@ NOM_BDD_GRAPHS = "graphs.db"
 if (path.isdir("./%s" %CHEMIN_SAUVEGARDE_LOCAL) == False):
 	mkdir("./%s" %CHEMIN_SAUVEGARDE_LOCAL)
 
-	# Formatages
+	# Formatage
 setlocale(LC_ALL, "")
 
 	# Status
@@ -118,7 +118,7 @@ def connexion_sftp():
 			erreur_sftp_affichee = False
 	except AuthenticationException:
 		if (erreur_sftp_affichee == False):
-			print(couleur.ROUGE + "|Erreur - " + strftime("%d/%m ") + "à " + strftime("%H:%M") + "| Identifiant ou mot de passe eronné.\nUne nouvelle tentative sera néanmoins effectuée après chaque nouvelle mesure, car une erreur du serveur est possible.\nVeuillez relancer le programme si vous souhaitez modifier les identifiants." + couleur.FIN_STYLE)
+			print(couleur.ROUGE + "|Erreur - " + strftime("%d/%m ") + "à " + strftime("%H:%M") + "| Identifiant ou mot de passe eronné\nUne nouvelle tentative sera néanmoins effectuée après chaque nouvelle mesure.\nVeuillez relancer le programme si vous souhaitez modifier les identifiants." + couleur.FIN_STYLE)
 			erreur_sftp_affichee = True
 		erreur_sftp = True
 	except:
@@ -158,7 +158,7 @@ system("clear")
 print("%s|Info| Initialisation terminée%s" %(couleur.BLEU_CLAIR, couleur.FIN_STYLE))
 print("%s|Info| Les messages d'erreur s'afficheront dans cette console%s\n" %(couleur.BLEU_FONCE, couleur.FIN_STYLE))
 
-	# Attente mise en route des services réseaux de l'OS
+	# Attente de la mise en route des services réseaux de l'OS
 sleep(5)
 
 while True:
@@ -218,7 +218,7 @@ while True:
 		curseur_donnees.execute("""SELECT AVG(temperature_ambiante), AVG(humidite_ambiante) FROM meteor_donnees WHERE date_mesure >= datetime('now', 'localtime', '-1 hour', '1 minute') AND temperature_ambiante IS NOT NULL AND humidite_ambiante IS NOT NULL""")
 		moyenne_donnees = curseur_donnees.fetchall()[0]
 
-			# Vérification que les données existes (changement de fuseau été/hiver)
+			# Vérification que les données existent (changement de fuseau, été/hiver)
 		if (moyenne_donnees[0] != None and moyenne_donnees[1] != None):
 			curseur_graphs.execute("""INSERT INTO meteor_graphs (date_mesure, temperature_ambiante, humidite_ambiante) VALUES (datetime('now', 'localtime'), %f, %f)""" %(round(moyenne_donnees[0]/1, 1), round(moyenne_donnees[1]/1, 1)))
 			bdd_graphs.commit()
