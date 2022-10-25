@@ -10,7 +10,7 @@ chaque heure générera la moyenne des mesures effectuées. Ces données seront
 enregistrées dans des bases de données, qui seront transmises à [un site
 internet](https://github.com/LoicDblt/MeteoR-Site), afin de les afficher par la
 suite.  
-Ainsi on retrouvera un affichage "local" sur l'écran les informations
+AInsi, on retrouvera un affichage local sur l'écran, avec les informations
 actuelles, mais aussi au travers dudit site en proposant davantages
 d'informations, telles que l'évolution de la température/humidité dans le temps
 ou encore les minimums et maximums respectifs.
@@ -56,10 +56,9 @@ ou encore les minimums et maximums respectifs.
  version de Python en utilisant ```python3```.
 
  À noter, il est possible de lancer le programme en local uniquement. Il vous
-  suffit de compléter les champs avec des valeurs quelconques...
+  suffit de compléter les champs avec des valeurs quelconques.
  
  Il est recommandé de créer un ```screen``` afin de garder en permanence le
  programme en fond, même lorsque la session SSH est fermée.  
- Aussi, il est possible de créer un script afin de lancer automatiquement le
- programme en démarrage du Raspbery Pi. Cela peut être utile afin de garder une
- grande disponibilité, notamment en cas de coupures de courant.
+ Aussi, il est également recommandé de créer un script afin de lancer automatiquement le
+ programme au démarrage du Raspberry Pi.
