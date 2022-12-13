@@ -10,7 +10,7 @@ chaque heure générera la moyenne des mesures effectuées. Ces données seront
 enregistrées dans des bases de données, qui seront transmises à [un site
 internet](https://github.com/LoicDblt/MeteoR-Site), afin de les afficher par la
 suite.  
-AInsi, on retrouvera un affichage local sur l'écran, avec les informations
+Ainsi, on retrouvera un affichage local sur l'écran, avec les informations
 actuelles, mais aussi au travers dudit site en proposant davantages
 d'informations, telles que l'évolution de la température/humidité dans le temps
 ou encore les minimums et maximums respectifs.
@@ -62,3 +62,10 @@ ou encore les minimums et maximums respectifs.
  programme en fond, même lorsque la session SSH est fermée.  
  Aussi, il est également recommandé de créer un script afin de lancer automatiquement le
  programme au démarrage du Raspberry Pi.
+
+---
+
+ ### HomeBridge
+ Pour utiliser le capteur connecté au Raspberry avec HomeKit, il est possible d'utiliser HomeBridge. Il faut par la suite ajouter les plugins [HomeBridge HTTP Temperature sensor](https://github.com/Supereg/homebridge-http-temperature-sensor#readme) et [HomeBridge HTTP Humidity sensor](https://github.com/Supereg/homebridge-http-humidity-sensor#readme).
+ 
+Le programme *HomeBridge_Si7021.py* permet de fournir les données aux plugins sous forme de json.
