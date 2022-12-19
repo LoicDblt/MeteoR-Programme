@@ -42,7 +42,7 @@ ou encore les minimums et maximums respectifs.
    * ```sudo pip install paramiko```
 
  **Attention !** Il peut être nécessaire de préciser la version de Python en
- usant de ```python3``` et ```pip3```.
+ faisant usage de ```python3``` et ```pip3```.
 
 ---
 
@@ -60,12 +60,15 @@ ou encore les minimums et maximums respectifs.
  
  Il est recommandé de créer un ```screen``` afin de garder en permanence le
  programme en fond, même lorsque la session SSH est fermée.  
- Aussi, il est également recommandé de créer un script afin de lancer automatiquement le
- programme au démarrage du Raspberry Pi.
+ Aussi, il est également possible de créer un script afin de lancer
+ automatiquement le programme au démarrage du Raspberry Pi.
 
 ---
 
  ### HomeBridge
- Pour utiliser le capteur connecté au Raspberry avec HomeKit, il est possible d'utiliser HomeBridge. Il faut par la suite ajouter les plugins [HomeBridge HTTP Temperature sensor](https://github.com/Supereg/homebridge-http-temperature-sensor#readme) et [HomeBridge HTTP Humidity sensor](https://github.com/Supereg/homebridge-http-humidity-sensor#readme).
+ Pour utiliser le capteur connecté au Raspberry avec HomeKit, il est possible d'utiliser [HomeBridge](https://github.com/homebridge/homebridge/wiki/Install-Homebridge-on-Raspbian).  
+ Une fois celui-ci installé, il est nécessaire d'ajouter les plugins (grâce à l'interface d'administration)
+ [HomeBridge HTTP Temperature sensor](https://github.com/Supereg/homebridge-http-temperature-sensor#readme)
+ et [HomeBridge HTTP Humidity sensor](https://github.com/Supereg/homebridge-http-humidity-sensor#readme).  
  
-Le programme *HomeBridge_Si7021.py* permet de fournir les données aux plugins sous forme de json.
+Le programme *HomeBridge_Si7021.py* permet de fournir les données, aux plugins installés précédemment, sous forme de json.
