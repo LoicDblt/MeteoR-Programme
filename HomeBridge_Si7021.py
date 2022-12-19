@@ -27,6 +27,10 @@ class temp:
 				break
 			except OSError:
 				sleep(2)
+				continue
+			except RuntimeError:
+				sleep(2)
+				continue
 		return dumps(temperature)
 
 class humi:
@@ -38,6 +42,10 @@ class humi:
 				break
 			except OSError:
 				sleep(2)
+				continue
+			except RuntimeError:
+				sleep(2)
+				continue
 		return dumps(humidite)
 
 # Lance le serveur
