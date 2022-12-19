@@ -171,10 +171,20 @@ while True:
 
 	# Récupération des données (arrondies à 0.1 près)
 		# Température
-	temperature = round(capteur.temperature, 1)
+	for i in range(4):
+		try:
+			temperature = round(capteur.temperature, 1)
+			break
+		except OSError:
+			continue
 
 		# Humidité
-	humidite = round(capteur.relative_humidity, 1)
+	for i in range(4):
+		try:
+			humidite = round(capteur.relative_humidity, 1)
+			break
+		except OSError:
+			continue
 
 		# Enregistrement
 	curseur_donnees.execute("""INSERT INTO meteor_donnees (date_mesure, temperature_ambiante, humidite_ambiante) VALUES (datetime('now', 'localtime'), %f, %f)""" %(temperature, humidite))
