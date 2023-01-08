@@ -12,7 +12,7 @@ while True:
 	except RuntimeError:
 		continue
 
-# Chaque page va appeler sa classe
+# Chaque url va appeler sa classe ("url", "classe")
 urls = (
 	"/temp", "temp",
 	"/humi", "humi"
@@ -25,12 +25,8 @@ class temp:
 			try:
 				temperature = round(capteur.temperature, 1)
 				break
-			except OSError:
-				sleep(2)
-				continue
-			except RuntimeError:
-				sleep(2)
-				continue
+			except:
+				sleep(i)
 		return dumps(temperature)
 
 class humi:
@@ -40,12 +36,8 @@ class humi:
 			try:
 				humidite = round(capteur.relative_humidity, 1)
 				break
-			except OSError:
-				sleep(2)
-				continue
-			except RuntimeError:
-				sleep(2)
-				continue
+			except:
+				sleep(i)
 		return dumps(humidite)
 
 # Lance le serveur
