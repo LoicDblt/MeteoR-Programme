@@ -46,7 +46,7 @@ from time import localtime, sleep, strftime
 ## Messages d'erreur #####################################
 def messageErreur(message):
 	print("%s|Erreur - %s à %s| %s%s"
-		%(couleur.ROUGE, strftime("%d/%m "), strftime("%H:%M"),
+		%(couleur.ROUGE, strftime("%d/%m"), strftime("%H:%M"),
 		message, couleur.FIN_STYLE))
 
 ## Variables et initialisation ###########################
@@ -93,7 +93,7 @@ while True:
 bdd_donnees = connect(NOM_BDD_DONNEES)
 curseur_donnees = bdd_donnees.cursor()
 curseur_donnees.execute("""CREATE TABLE IF NOT EXISTS meteor_donnees
-	(date_mesure CHAR, temperature_ambiante FLOAT, humidite_ambiante FLOAT
+	(date_mesure CHAR, temperature_ambiante FLOAT, humidite_ambiante FLOAT,
 	max_temp FLOAT, min_temp FLOAT, max_humi FLOAT, min_humi FLOAT)""")
 curseur_donnees.execute("""SELECT MIN(max_humi) FROM meteor_donnees""")
 bdd_deja_init = curseur_donnees.fetchall()
@@ -211,7 +211,7 @@ while True:
 			break
 		except:
 			temp_temperature = None
-			messageErreur("Mesure de température erronée")
+			sleep(0.1)
 
 	if temp_temperature is not None:
 		temperature = temp_temperature
@@ -223,7 +223,7 @@ while True:
 			break
 		except:
 			temp_humidite = None
-			messageErreur("Mesure d'humidité erronée")
+			sleep(0.1)
 
 	if temp_humidite is not None:
 		humidite = temp_humidite
