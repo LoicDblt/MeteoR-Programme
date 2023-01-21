@@ -1,11 +1,11 @@
 #!/usr/bin/python3
 #Author: DIEBOLT Loïc
 
-##########################################################
-##                        MeteoR                        ##
-##########################################################
+################################################################################
+#                                    MeteoR                                    #
+################################################################################
 
-## Initialisation ########################################
+## Initialisation ##############################################################
 	# Couleurs pour les messages affichés à l'utilisateur
 class couleur:
 	BLEU_CLAIR = "\033[36m"
@@ -30,7 +30,7 @@ system("clear")
 print("%s|INFO| Initialisation du programme, veuillez patienter...%s"
 	%(couleur.BLEU_CLAIR, couleur.FIN_STYLE))
 
-## Import des modules ####################################
+## Import des modules ##########################################################
 from adafruit_si7021 import SI7021
 from Adafruit_SSD1306 import SSD1306_128_64
 from board import I2C
@@ -43,13 +43,13 @@ from shutil import copy2
 from sqlite3 import connect, PARSE_COLNAMES, PARSE_DECLTYPES
 from time import localtime, sleep, strftime
 
-## Messages d'erreur #####################################
+## Messages d'erreur ###########################################################
 def messageErreur(message):
 	print("%s|Erreur - %s à %s| %s%s"
 		%(couleur.ROUGE, strftime("%d/%m"), strftime("%H:%M"),
 		message, couleur.FIN_STYLE))
 
-## Variables et initialisation ###########################
+## Variables et initialisation #################################################
 	# Chemins et noms des BDD
 CHEMIN_DOSSIER_WEB_SERVEUR = argv[3]
 CHEMIN_SAUVEGARDE_LOCAL = "sauvegardes"
@@ -88,7 +88,7 @@ while True:
 				"correction en cours, veuillez patienter...")
 			erreur_capteur_affichee = True
 
-## SQLite ################################################
+## SQLite ######################################################################
 	# BDD des données
 bdd_donnees = connect(NOM_BDD_DONNEES)
 curseur_donnees = bdd_donnees.cursor()
@@ -99,7 +99,7 @@ curseur_donnees.execute("""SELECT MIN(max_humi) FROM meteor_donnees""")
 bdd_deja_init = curseur_donnees.fetchall()
 bdd_deja_init_float = bdd_deja_init[0][0]
 
-# Initialise les valeurs min et max de température et d'humidité
+	# Initialise les valeurs min et max de température et d'humidité
 if (bdd_deja_init_float == None):
 	curseur_donnees.execute("""INSERT INTO meteor_donnees
 		(date_mesure, max_temp, min_temp, max_humi, min_humi) VALUES
@@ -114,7 +114,7 @@ curseur_graphs.execute("""CREATE TABLE IF NOT EXISTS meteor_graphs
 	(date_mesure CHAR, temperature_ambiante FLOAT, humidite_ambiante FLOAT)""")
 bdd_graphs.commit()
 
-## Paramétrage de l'écran ################################
+## Paramétrage de l'écran ######################################################
 affichage = SSD1306_128_64(rst = None)
 affichage.begin()
 affichage.clear()
@@ -127,7 +127,7 @@ affichage_img = Image.new('1', (affichage_largeur, affichage_hauteur))
 POLICE = ImageFont.load_default()
 TRANSPARENT = 255
 
-## Connexion par SFTP ####################################
+## Connexion par SFTP ##########################################################
 def connexion_sftp():
 	global session_sftp
 	global sftp
@@ -157,13 +157,17 @@ def connexion_sftp():
 
 def deconnexion_sftp():
 	if (erreur_sftp == False):
-		if session_sftp: session_sftp.close()
-		if sftp: sftp.close()
+		if session_sftp : session_sftp.close()
+		if sftp : sftp.close()
 
-## Envoi de fichiers par SFTP ############################
+## Envoi de fichiers par SFTP ##################################################
 def envoi_fichier(nom_fichier):
 	chemin = "%s/bdd/%s" %(CHEMIN_DOSSIER_WEB_SERVEUR, nom_fichier)
-	sftp.put(nom_fichier, chemin)
+	try:
+		sftp.put(nom_fichier, chemin)
+	except IOError:
+		sftp.mkdir("%s/bdd" %CHEMIN_DOSSIER_WEB_SERVEUR)
+		sftp.put(nom_fichier, chemin)
 
 def gestion_envoi(nom_fichier):
 	if (erreur_sftp == False):
@@ -173,7 +177,7 @@ def gestion_envoi(nom_fichier):
 				return True
 			except:
 				sleep(5 * nbr_essais)
-		messageErreur("L'envoi du fichier %s a échoué" %(nom_fichier))
+		messageErreur("L'envoi du fichier %s a échoué" %nom_fichier)
 	return False
 
 ## Récupération des valeurs minimales et maximales #######
@@ -183,7 +187,7 @@ def recup_max_min(operation, temp_humi):
 	max_min_temp_humi_valeur = curseur_donnees.fetchall()
 	return max_min_temp_humi_valeur[0][0]
 
-## Programme principal ###################################
+## Programme principal #########################################################
 	# Messages d'information
 system("clear")
 print("%s|Info| Initialisation terminée%s" %(couleur.BLEU_CLAIR,

@@ -72,10 +72,10 @@ automatiquement le programme au démarrage du Raspberry Pi.
 ### HomeBridge
 Pour utiliser le capteur connecté au Raspberry avec HomeKit, il est possible
 d'utiliser [HomeBridge](https://github.com/homebridge/homebridge/wiki/Install-Homebridge-on-Raspbian).  
-Une fois celui-ci installé, il est nécessaire d'ajouter les plugins
-(grâce à l'interface d'administration)
+Une fois celui-ci installé, il est nécessaire d'ajouter, grâce à l'interface
+d'administration, les plugins
 [HomeBridge HTTP Temperature sensor](https://github.com/Supereg/homebridge-http-temperature-sensor#readme)
 et [HomeBridge HTTP Humidity sensor](https://github.com/Supereg/homebridge-http-humidity-sensor#readme).
 
-Le programme *HomeBridge_Si7021.py* permet de fournir les données, aux plugins
-installés précédemment, sous forme de json.
+Le programme *HomeBridge_Si7021.py* permet de fournir les données au format
+*json*, aux plugins installés précédemment.
