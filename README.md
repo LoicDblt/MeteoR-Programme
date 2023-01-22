@@ -16,7 +16,7 @@ d'informations, telles que l'évolution de la température/humidité dans le tem
 ou encore les minimums et maximums respectifs.
 
 ## **Installation**
-### Sondes
+### Composants
 Il est nécessaire d'installer la sonde de température/hygrométrie Si7021,
 ainsi que l'écran SSD1306.
 Les instructions de montage sont trouvables sur le site d'Adafruit (liens
@@ -43,7 +43,8 @@ Soit en installant manuellement chaque module :
 * paramiko
   * ```sudo pip install paramiko```
 
-**Remarque** Il peut être nécessaire de préciser la version de Python en
+**Remarque**  
+Il peut être nécessaire de préciser la version de Python en
 faisant usage de ```python3``` et ```pip3```.
 
 ---
@@ -56,7 +57,8 @@ il suffit de lancer la commande suivante :
 python MeteoR.py <Adresse SFTP> <Port SFTP> <Chemin racine sur le serveur> <Identifiant SFTP> <Mot de passe SFTP>
 ```
 
-**Remarque** Comme précédemment, il peut être nécessaire de préciser la
+**Remarque**  
+Comme précédemment, il peut être nécessaire de préciser la
 version de Python en utilisant ```python3```.
 
 À noter, il est possible de lancer le programme en local uniquement. Il vous
@@ -69,7 +71,7 @@ automatiquement le programme au démarrage du Raspberry Pi.
 
 ---
 
-### HomeBridge
+### [Optionnel] HomeBridge
 Pour utiliser le capteur connecté au Raspberry avec HomeKit, il est possible
 d'utiliser [HomeBridge](https://github.com/homebridge/homebridge/wiki/Install-Homebridge-on-Raspbian).  
 Une fois celui-ci installé, il est nécessaire d'ajouter, grâce à l'interface
