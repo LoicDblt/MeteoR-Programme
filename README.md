@@ -1,12 +1,20 @@
 # MeteoR - Programme
-
-## **Présentation**
 Ce programme, écrit en Python 3, permet au travers d'un Raspberry Pi
 possédant une sonde Si7021 et un écran SSD1306, de récupérer la température et
 l'humidité ambiante d'une pièce.
 
-Ce dernier va enregistrer les données de température et d'hygrométrie, puis
-chaque heure générera la moyenne des mesures effectuées. Ces données seront
+## **Sommaire**
+- [Présentation](#présentation)
+- [Installation](#installation)
+  - [Composants](#composants)
+  - [Liens pour l'assemblage](#liens-pour-lassemblage)
+  - [Dépendances](#dépendances)
+- [Programme](#programme)
+- [\[Optionnel\] HomeBridge](#optionnel-homebridge)
+
+## **Présentation**
+Le programme MeteoR va enregistrer les données de température et d'hygrométrie,
+puis chaque heure générera la moyenne des mesures effectuées. Ces données seront
 enregistrées dans des bases de données, qui seront transmises à [un site
 internet](https://github.com/LoicDblt/MeteoR-Site), afin de les afficher par la
 suite.  
@@ -26,8 +34,6 @@ ci-dessous).
 * [Si7021](https://learn.adafruit.com/adafruit-si7021-temperature-plus-humidity-sensor/assembly)
 * [SSD1306](https://learn.adafruit.com/monochrome-oled-breakouts/wiring-128x64-oleds)
 
- ---
-
 ### Dépendances
 Il est nécessaire d'installer différents modules en amont du lancement du
 programme.
@@ -43,13 +49,11 @@ Soit en installant manuellement chaque module :
 * paramiko
   * ```sudo pip install paramiko```
 
-**Remarque**  
+> **Remarque**  
 Il peut être nécessaire de préciser la version de Python en
 faisant usage de ```python3``` et ```pip3```.
 
----
-
-### Programme
+## Programme
 Une fois le programme récupéré et toutes les étapes précédentes effectuées,
 il suffit de lancer la commande suivante :
 
@@ -57,7 +61,7 @@ il suffit de lancer la commande suivante :
 python MeteoR.py <Adresse SFTP> <Port SFTP> <Chemin racine sur le serveur> <Identifiant SFTP> <Mot de passe SFTP>
 ```
 
-**Remarque**  
+> **Remarque**  
 Comme précédemment, il peut être nécessaire de préciser la
 version de Python en utilisant ```python3```.
 
@@ -69,9 +73,7 @@ programme en fond, même lorsque la session SSH est fermée.
 Aussi, il est également possible de créer un script afin de lancer
 automatiquement le programme au démarrage du Raspberry Pi.
 
----
-
-### [Optionnel] HomeBridge
+## [Optionnel] HomeBridge
 Pour utiliser le capteur connecté au Raspberry avec HomeKit, il est possible
 d'utiliser [HomeBridge](https://github.com/homebridge/homebridge/wiki/Install-Homebridge-on-Raspbian).  
 Une fois celui-ci installé, il est nécessaire d'ajouter, grâce à l'interface
