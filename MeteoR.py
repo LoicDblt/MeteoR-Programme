@@ -18,26 +18,26 @@ class couleur:
 	# Vérifie le nombre d'arguments
 from sys import argv
 
-# Mode déconnecté (pas d'arguments)
+# Mode local (pas d'arguments)
 if (len(argv) == 1):
-	DECONNECTE = True
+	MODE_LOCAL = True
 
 # Mode connecté
-elif (len(argv) == 6):
-	DECONNECTE = False
+elif (len(argv) == 5):
+	MODE_LOCAL = False
 
 else:
-	print("%s|ERREUR| Usage : python3 %s <Adresse SFTP> <Port SFTP> " +
+	print("{0}|ERREUR| Usage : python3 {1} <Adresse SFTP> "
+		.format(couleur.ROUGE, argv[0]) +
 		"<Chemin racine sur le serveur> <Identifiant SFTP> " +
-		"<Mot de passe SFTP>%s"
-		%(couleur.ROUGE, argv[0], couleur.FIN_STYLE))
+		"<Mot de passe SFTP>{0}".format(couleur.FIN_STYLE))
 	exit()
 
 	# Message d'initialisation
 from os import system
 system("clear")
-print("%s|INFO| Initialisation du programme, veuillez patienter...%s"
-	%(couleur.BLEU_CLAIR, couleur.FIN_STYLE))
+print("{0}|INFO| Initialisation du programme, veuillez patienter...{1}"
+	.format(couleur.BLEU_CLAIR, couleur.FIN_STYLE))
 
 ## Import des modules ##########################################################
 from adafruit_si7021 import SI7021
@@ -54,23 +54,26 @@ from time import localtime, sleep, strftime
 
 ## Messages d'erreur ###########################################################
 def messageErreur(message):
-	print("%s|Erreur - %s à %s| %s%s"
-		%(couleur.ROUGE, strftime("%d/%m"), strftime("%H:%M"),
+	print("{0}|Erreur - {1} à {2}| {3}{4}"
+		.format(couleur.ROUGE, strftime("%d/%m"), strftime("%H:%M"),
 		message, couleur.FIN_STYLE))
 
 ## Variables et initialisation #################################################
 	# Chemins et noms des BDD
-if (DECONNECTE == False):
-	CHEMIN_DOSSIER_WEB_SERVEUR = argv[3]
+if (MODE_LOCAL == False):
+	CHEMIN_DOSSIER_WEB_SERVEUR = argv[2]
 CHEMIN_SAUVEGARDE_LOCAL = "sauvegardes"
 NOM_BDD_DONNEES = "donnees.db"
 NOM_BDD_GRAPHS = "graphs.db"
 
-if (path.isdir("./%s" %CHEMIN_SAUVEGARDE_LOCAL) == False):
-	mkdir("./%s" %CHEMIN_SAUVEGARDE_LOCAL)
+if (path.isdir("./{0}".format(CHEMIN_SAUVEGARDE_LOCAL)) == False):
+	mkdir("./{0}".fomat(CHEMIN_SAUVEGARDE_LOCAL))
 
 	# Formatage
 setlocale(LC_ALL, "")
+
+	# Réseau
+PORT_SFTP = 22
 
 	# Status
 status_envoi = True
@@ -139,21 +142,21 @@ TRANSPARENT = 255
 
 ## Connexion par SFTP ##########################################################
 def connexion_sftp():
-	if (DECONNECTE == True):
+	if (MODE_LOCAL == True):
 		return
 	global session_sftp
 	global sftp
 	global erreur_sftp
 	global erreur_sftp_affichee
 	try:
-		session_sftp = Transport(argv[1], int(argv[2]))
-		session_sftp.connect(username = argv[4], password = argv[5])
+		session_sftp = Transport(argv[1], PORT_SFTP)
+		session_sftp.connect(username = argv[3], password = argv[4])
 		sftp = SFTPClient.from_transport(session_sftp)
 		erreur_sftp = False
 		if (erreur_sftp_affichee == True):
 			erreur_sftp_affichee = False
-			print("%s|Info - %s à %s| Connexion par SFTP rétablie%s"
-				%(couleur.VERT, strftime("%d/%m "), strftime("%H:%M"),
+			print("{0}|Info - {1} à {2}| Connexion par SFTP rétablie{3}"
+				.format(couleur.VERT, strftime("%d/%m "), strftime("%H:%M"),
 				couleur.FIN_STYLE))
 	except AuthenticationException:
 		if (erreur_sftp_affichee == False):
@@ -168,7 +171,7 @@ def connexion_sftp():
 		messageErreur("La connexion par SFTP au serveur a échoué")
 
 def deconnexion_sftp():
-	if (DECONNECTE == True):
+	if (MODE_LOCAL == True):
 		return
 	if (erreur_sftp == False):
 		if session_sftp : session_sftp.close()
@@ -176,40 +179,40 @@ def deconnexion_sftp():
 
 ## Envoi de fichiers par SFTP ##################################################
 def envoi_fichier(nom_fichier):
-	chemin = "%s/bdd/%s" %(CHEMIN_DOSSIER_WEB_SERVEUR, nom_fichier)
+	chemin = "{0}/bdd/{1}".format(CHEMIN_DOSSIER_WEB_SERVEUR, nom_fichier)
 	try:
 		sftp.put(nom_fichier, chemin)
 	except IOError:
-		sftp.mkdir("%s/bdd" %CHEMIN_DOSSIER_WEB_SERVEUR)
+		sftp.mkdir("{0}/bdd".format(CHEMIN_DOSSIER_WEB_SERVEUR))
 		sftp.put(nom_fichier, chemin)
 
 def gestion_envoi(nom_fichier):
-	if (DECONNECTE == True):
+	if (MODE_LOCAL == True):
 		return
 	if (erreur_sftp == False):
 		for nbr_essais in range(1, 3):
 			try:
-				envoi_fichier("%s" %nom_fichier)
+				envoi_fichier("{0}".format(nom_fichier))
 				return True
 			except:
 				sleep(5 * nbr_essais)
-		messageErreur("L'envoi du fichier %s a échoué" %nom_fichier)
+		messageErreur("L'envoi du fichier {0} a échoué".format(nom_fichier))
 	return False
 
 ## Récupération des valeurs minimales et maximales #######
 def recup_max_min(operation, temp_humi):
-	curseur_donnees.execute("""SELECT %s(%s) FROM meteor_donnees"""
-		%(operation, temp_humi))
+	curseur_donnees.execute("""SELECT {0}({1}) FROM meteor_donnees"""
+		.format(operation, temp_humi))
 	max_min_temp_humi_valeur = curseur_donnees.fetchall()
 	return max_min_temp_humi_valeur[0][0]
 
 ## Programme principal #########################################################
 	# Messages d'information
 system("clear")
-print("%s|Info| Mode %s%s" %(couleur.BLEU_CLAIR,
-	("connecté" if DECONNECTE == False else "déconnecté"), couleur.FIN_STYLE))
-print("%s|Info| Les messages d'erreur s'afficheront dans cette console%s\n"
-	%(couleur.BLEU_FONCE, couleur.FIN_STYLE))
+print("{0}|Info| Mode {1}{2}".format(couleur.BLEU_CLAIR,
+	("connecté" if MODE_LOCAL == False else "local"), couleur.FIN_STYLE))
+print("{0}|Info| Les messages d'erreur s'afficheront dans cette console{1}\n"
+	.format(couleur.BLEU_FONCE, couleur.FIN_STYLE))
 
 	# Attente de la mise en route des services réseaux de l'OS
 sleep(5)
@@ -251,33 +254,34 @@ while True:
 		# Enregistrement de la température et de l'humidité
 	curseur_donnees.execute("""INSERT INTO meteor_donnees
 		(date_mesure, temperature_ambiante, humidite_ambiante) VALUES
-		(datetime("now", "localtime"), %f, %f)""" %(temperature, humidite))
+		(datetime("now", "localtime"), {0}, {1})"""
+		.format(temperature, humidite))
 	bdd_donnees.commit()
 
 		# Température max-min
 	if (temperature > recup_max_min("MAX", "max_temp")):
 		curseur_donnees.execute("""INSERT INTO meteor_donnees
 			(date_mesure, max_temp) VALUES
-			(datetime("now", "localtime"), %f)""" %temperature)
+			(datetime("now", "localtime"), {0})""".format(temperature))
 		bdd_donnees.commit()
 
 	if (temperature < recup_max_min("MIN", "min_temp")):
 		curseur_donnees.execute("""INSERT INTO meteor_donnees
 			(date_mesure, min_temp) VALUES
-			(datetime("now", "localtime"), %f)""" %temperature)
+			(datetime("now", "localtime"), {0})""".format(temperature))
 		bdd_donnees.commit()
 
 		# Humidité max-min
 	if (humidite > recup_max_min("MAX", "max_humi")):
 		curseur_donnees.execute("""INSERT INTO meteor_donnees
 			(date_mesure, max_humi) VALUES
-			(datetime("now", "localtime"), %f)""" %humidite)
+			(datetime("now", "localtime"), {0})""".format(humidite))
 		bdd_donnees.commit()
 
 	if (humidite < recup_max_min("MIN", "min_humi")):
 		curseur_donnees.execute("""INSERT INTO meteor_donnees
 			(date_mesure, min_humi) VALUES
-			(datetime("now", "localtime"), %f)""" %humidite)
+			(datetime("now", "localtime"), {0})""".format(humidite))
 		bdd_donnees.commit()
 
 		# Envoi de la BDD des données actuelles au serveur
@@ -306,8 +310,8 @@ while True:
 		if (moyenne_donnees[0] != None and moyenne_donnees[1] != None):
 			curseur_graphs.execute("""INSERT INTO meteor_graphs
 				(date_mesure, temperature_ambiante, humidite_ambiante) VALUES
-				(datetime("now", "localtime"), %f, %f)"""
-				%(round(moyenne_donnees[0]/1, 1),
+				(datetime("now", "localtime"), {0}, {1})"""
+				.format(round(moyenne_donnees[0]/1, 1),
 				round(moyenne_donnees[1]/1, 1)))
 
 			bdd_graphs.commit()
@@ -320,10 +324,10 @@ while True:
 			(localtime().tm_isdst == 1 and maintenant.hour == 22) or
 			(localtime().tm_isdst == 0 and maintenant.hour == 23)
 		):
-			copy2("./%s" %NOM_BDD_DONNEES, "./%s/donnees_sauvegarde.db"
-				%CHEMIN_SAUVEGARDE_LOCAL)
-			copy2("./%s" %NOM_BDD_GRAPHS, "./%s/graphs_sauvegarde.db"
-				%CHEMIN_SAUVEGARDE_LOCAL)
+			copy2("./{0}".format(NOM_BDD_DONNEES), "./{0}/donnees_sauvegarde.db"
+				.format(CHEMIN_SAUVEGARDE_LOCAL))
+			copy2("./{0}".format(NOM_BDD_GRAPHS), "./{0}/graphs_sauvegarde.db"
+				.format(CHEMIN_SAUVEGARDE_LOCAL))
 
 				# Nettoyage BDD des graphs
 			curseur_graphs.execute("""DELETE FROM meteor_graphs WHERE
@@ -369,5 +373,5 @@ while True:
 		sleep(duree_attente)
 	else:
 		messageErreur("Durée d'attente calculée inférieure à 0 | " +
-			"temps_arrivee = %d - datetime.utcnow = %d"
-			%(temps_arrivee, datetime.utcnow()))
+			"temps_arrivee = {0} - datetime.utcnow = {1}"
+			.format(temps_arrivee, datetime.utcnow()))
