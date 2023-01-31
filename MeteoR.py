@@ -17,7 +17,16 @@ class couleur:
 
 	# Vérifie le nombre d'arguments
 from sys import argv
-if (len(argv) != 6):
+
+# Mode déconnecté (pas d'arguments)
+if (len(argv) == 1):
+	DECONNECTE = True
+
+# Mode connecté
+elif (len(argv) == 6):
+	DECONNECTE = False
+
+else:
 	print("%s|ERREUR| Usage : python3 %s <Adresse SFTP> <Port SFTP> " +
 		"<Chemin racine sur le serveur> <Identifiant SFTP> " +
 		"<Mot de passe SFTP>%s"
@@ -51,7 +60,8 @@ def messageErreur(message):
 
 ## Variables et initialisation #################################################
 	# Chemins et noms des BDD
-CHEMIN_DOSSIER_WEB_SERVEUR = argv[3]
+if (DECONNECTE == False):
+	CHEMIN_DOSSIER_WEB_SERVEUR = argv[3]
 CHEMIN_SAUVEGARDE_LOCAL = "sauvegardes"
 NOM_BDD_DONNEES = "donnees.db"
 NOM_BDD_GRAPHS = "graphs.db"
@@ -129,6 +139,8 @@ TRANSPARENT = 255
 
 ## Connexion par SFTP ##########################################################
 def connexion_sftp():
+	if (DECONNECTE == True):
+		return
 	global session_sftp
 	global sftp
 	global erreur_sftp
@@ -156,6 +168,8 @@ def connexion_sftp():
 		messageErreur("La connexion par SFTP au serveur a échoué")
 
 def deconnexion_sftp():
+	if (DECONNECTE == True):
+		return
 	if (erreur_sftp == False):
 		if session_sftp : session_sftp.close()
 		if sftp : sftp.close()
@@ -170,6 +184,8 @@ def envoi_fichier(nom_fichier):
 		sftp.put(nom_fichier, chemin)
 
 def gestion_envoi(nom_fichier):
+	if (DECONNECTE == True):
+		return
 	if (erreur_sftp == False):
 		for nbr_essais in range(1, 3):
 			try:
@@ -190,8 +206,8 @@ def recup_max_min(operation, temp_humi):
 ## Programme principal #########################################################
 	# Messages d'information
 system("clear")
-print("%s|Info| Initialisation terminée%s" %(couleur.BLEU_CLAIR,
-	couleur.FIN_STYLE))
+print("%s|Info| Mode %s%s" %(couleur.BLEU_CLAIR,
+	("connecté" if DECONNECTE == False else "déconnecté"), couleur.FIN_STYLE))
 print("%s|Info| Les messages d'erreur s'afficheront dans cette console%s\n"
 	%(couleur.BLEU_FONCE, couleur.FIN_STYLE))
 
@@ -295,6 +311,7 @@ while True:
 				round(moyenne_donnees[1]/1, 1)))
 
 			bdd_graphs.commit()
+
 			status_envoi = gestion_envoi(NOM_BDD_GRAPHS)
 
 			# Sauvegarde puis nettoyage des BDD, une fois par jour, à minuit

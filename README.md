@@ -38,16 +38,24 @@ ci-dessous).
 Il est nécessaire d'installer différents modules en amont du lancement du
 programme.
 Soit en utilisant le fichier des dépendances mis à disposition :
-* ```pip install -r requirements.txt```
+```
+pip install -r requirements.txt
+```
 
 Soit en installant manuellement chaque module :
 * Adafruit_SSD1306
-  * ```sudo python -m pip install --upgrade pip setuptools wheel```
-  * ```sudo pip install Adafruit-SSD1306```
+  ```
+  sudo python -m pip install --upgrade pip setuptools wheel
+  sudo pip install Adafruit-SSD1306
+  ```
 * adafruit_si7021
-  * ```sudo pip install adafruit-circuitpython-si7021```
+  ```
+  sudo pip install adafruit-circuitpython-si7021
+  ```
 * paramiko
-  * ```sudo pip install paramiko```
+  ```
+  sudo pip install paramiko
+  ```
 
 > **Remarque**  
 Il peut être nécessaire de préciser la version de Python en
@@ -65,8 +73,10 @@ python MeteoR.py <Adresse SFTP> <Port SFTP> <Chemin racine sur le serveur> <Iden
 Comme précédemment, il peut être nécessaire de préciser la
 version de Python en utilisant ```python3```.
 
-À noter, il est possible de lancer le programme en local uniquement. Il vous
-suffit de compléter les champs avec des valeurs quelconques.
+> **Mode local**  
+Pour lancer le programme sans adjoindre de serveur et donc uniquement obtenir
+les informations sur l'écran connecté au Raspberry, il suffit de ne pas
+renseigner les différents arguments précédement indiqués.
 
 Il est recommandé de créer un ```screen``` afin de garder en permanence le
 programme en fond, même lorsque la session SSH est fermée.  
