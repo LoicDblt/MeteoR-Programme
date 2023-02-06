@@ -62,12 +62,12 @@ def messageErreur(message):
 	# Chemins et noms des BDD
 if (MODE_LOCAL == False):
 	CHEMIN_DOSSIER_WEB_SERVEUR = argv[2]
-CHEMIN_SAUVEGARDE_LOCAL = "sauvegardes"
+CHEMIN_SAUVEGARDE_LOCAL = "./sauvegardes"
 NOM_BDD_DONNEES = "donnees.db"
 NOM_BDD_GRAPHS = "graphs.db"
 
-if (path.isdir("./{0}".format(CHEMIN_SAUVEGARDE_LOCAL)) == False):
-	mkdir("./{0}".fomat(CHEMIN_SAUVEGARDE_LOCAL))
+if (path.isdir(CHEMIN_SAUVEGARDE_LOCAL) == False):
+	mkdir(CHEMIN_SAUVEGARDE_LOCAL)
 
 	# Formatage
 setlocale(LC_ALL, "")
@@ -87,8 +87,8 @@ temps_moyenne = datetime.utcnow() + timedelta(hours = 1)
 	# Valeurs température et humidité
 temperature = 0
 humidite = 0
-temp_temperature = 0
-temp_humidite = 0
+tampon_temperature = 0
+tampon_humidite = 0
 
 ## Capteur de température et d'humidité (Si7021) #########
 while True:
@@ -192,7 +192,7 @@ def gestion_envoi(nom_fichier):
 	if (erreur_sftp == False):
 		for nbr_essais in range(1, 3):
 			try:
-				envoi_fichier("{0}".format(nom_fichier))
+				envoi_fichier(nom_fichier)
 				return True
 			except:
 				sleep(5 * nbr_essais)
@@ -230,26 +230,26 @@ while True:
 		# Température
 	for i in range(4):
 		try:
-			temp_temperature = round(capteur.temperature, 1)
+			tampon_temperature = round(capteur.temperature, 1)
 			break
 		except:
-			temp_temperature = None
+			tampon_temperature = None
 			sleep(0.1)
 
-	if temp_temperature is not None:
-		temperature = temp_temperature
+	if tampon_temperature is not None:
+		temperature = tampon_temperature
 
 		# Humidité
 	for i in range(4):
 		try:
-			temp_humidite = round(capteur.relative_humidity, 1)
+			tampon_humidite = round(capteur.relative_humidity, 1)
 			break
 		except:
-			temp_humidite = None
+			tampon_humidite = None
 			sleep(0.1)
 
-	if temp_humidite is not None:
-		humidite = temp_humidite
+	if tampon_humidite is not None:
+		humidite = tampon_humidite
 
 		# Enregistrement de la température et de l'humidité
 	curseur_donnees.execute("""INSERT INTO meteor_donnees
@@ -319,14 +319,14 @@ while True:
 			status_envoi = gestion_envoi(NOM_BDD_GRAPHS)
 
 			# Sauvegarde puis nettoyage des BDD, une fois par jour, à minuit
-			# (en fonction du fuseau local français)
+			# (en fonction du fuseau local français en vigueur)
 		if (
 			(localtime().tm_isdst == 1 and maintenant.hour == 22) or
 			(localtime().tm_isdst == 0 and maintenant.hour == 23)
 		):
-			copy2("./{0}".format(NOM_BDD_DONNEES), "./{0}/donnees_sauvegarde.db"
+			copy2("./{0}".format(NOM_BDD_DONNEES), "{0}/donnees_sauvegarde.db"
 				.format(CHEMIN_SAUVEGARDE_LOCAL))
-			copy2("./{0}".format(NOM_BDD_GRAPHS), "./{0}/graphs_sauvegarde.db"
+			copy2("./{0}".format(NOM_BDD_GRAPHS), "{0}/graphs_sauvegarde.db"
 				.format(CHEMIN_SAUVEGARDE_LOCAL))
 
 				# Nettoyage BDD des graphs

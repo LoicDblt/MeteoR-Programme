@@ -66,7 +66,7 @@ Une fois le programme récupéré et toutes les étapes précédentes effectuée
 il suffit de lancer la commande suivante :
 
 ```shell
-python MeteoR.py <Adresse SFTP> <Port SFTP> <Chemin racine sur le serveur> <Identifiant SFTP> <Mot de passe SFTP>
+python meteor.py <Adresse SFTP> <Port SFTP> <Chemin racine sur le serveur> <Identifiant SFTP> <Mot de passe SFTP>
 ```
 
 > **Remarque**  
@@ -91,5 +91,5 @@ d'administration, les plugins
 [HomeBridge HTTP Temperature sensor](https://github.com/Supereg/homebridge-http-temperature-sensor#readme)
 et [HomeBridge HTTP Humidity sensor](https://github.com/Supereg/homebridge-http-humidity-sensor#readme).
 
-Le programme *HomeBridge_Si7021.py* permet de fournir les données au format
+Le programme *homeBridge_Si7021.py* permet de fournir les données au format
 *json*, aux plugins installés précédemment.
