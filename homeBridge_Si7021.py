@@ -1,3 +1,6 @@
+#! /usr/bin/python3
+# Auteur : DIEBOLT Loïc
+
 from adafruit_si7021 import SI7021
 from board import I2C
 from json import dumps

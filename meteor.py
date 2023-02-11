@@ -1,5 +1,5 @@
-#!/usr/bin/python3
-#Author: DIEBOLT Loïc
+#! /usr/bin/python3
+# Auteur : DIEBOLT Loïc
 
 ################################################################################
 #                                    MeteoR                                    #

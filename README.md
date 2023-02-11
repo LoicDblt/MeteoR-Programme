@@ -1,7 +1,7 @@
 # MeteoR - Programme
 Ce programme, écrit en Python 3, permet au travers d'un Raspberry Pi
-possédant une sonde Si7021 et un écran SSD1306, de récupérer la température et
-l'humidité ambiante d'une pièce.
+relié à une sonde Si7021 et un écran SSD1306, de récupérer la température et
+l'humidité relative ambiante d'une pièce.
 
 ## **Sommaire**
 - [Présentation](#présentation)
@@ -80,12 +80,14 @@ renseigner les différents arguments précédement indiqués.
 
 Il est recommandé de créer un ```screen``` afin de garder en permanence le
 programme en fond, même lorsque la session SSH est fermée.  
-Aussi, il est également possible de créer un script afin de lancer
-automatiquement le programme au démarrage du Raspberry Pi.
+Aussi, il est également possible d'utiliser un script (cf. le fichier
+*squelette_lancement.sh*), afin de lancer automatiquement le programme
+au démarrage du Raspberry Pi, avec l'aide d'une tâche CRON.
 
 ## [Optionnel] HomeBridge
-Pour utiliser le capteur connecté au Raspberry avec HomeKit, il est possible
-d'utiliser [HomeBridge](https://github.com/homebridge/homebridge/wiki/Install-Homebridge-on-Raspbian).  
+Pour utiliser le capteur relié au Raspberry au travers d'HomeKit, il est
+possible d'utiliser
+[HomeBridge](https://github.com/homebridge/homebridge/wiki/Install-Homebridge-on-Raspbian).  
 Une fois celui-ci installé, il est nécessaire d'ajouter, grâce à l'interface
 d'administration, les plugins
 [HomeBridge HTTP Temperature sensor](https://github.com/Supereg/homebridge-http-temperature-sensor#readme)
