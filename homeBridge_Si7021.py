@@ -5,13 +5,14 @@ from adafruit_si7021 import SI7021
 from board import I2C
 from json import dumps
 from time import sleep
-import web
+from web import application, debugerror
 
 # Initialise le capteur
 while True:
 	try:
 		capteur = SI7021(I2C())
 		break
+
 	except RuntimeError:
 		continue
 
@@ -28,6 +29,7 @@ class temp:
 			try:
 				temperature = round(capteur.temperature, 1)
 				break
+
 			except:
 				sleep(i)
 		return dumps(temperature)
@@ -39,12 +41,13 @@ class humi:
 			try:
 				humidite = round(capteur.relative_humidity, 1)
 				break
+
 			except:
 				sleep(i)
 		return dumps(humidite)
 
 # Lance le serveur
 if __name__ == "__main__":
-	app = web.application(urls, globals())
-	app.internalerror = web.debugerror
+	app = application(urls, globals())
+	app.internalerror = debugerror
 	app.run()

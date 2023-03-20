@@ -2,14 +2,14 @@
 # Auteur : DIEBOLT Loïc
 
 # Usage : python3 meteor.py <Adresse SFTP> <Chemin racine sur le serveur>
-#			 <Identifiant SFTP> <Mot de passe SFTP>
+#			 <Identifiant SFTP> <Clé SSH privée>
 screen -dmS meteor
 screen -S meteor -p 0 -X stuff "cd /dossier/local/emplacement/programme && \
 python3 meteor.py \
 sftp.serveur.com \
-/chemin/racine/serveur \
+/racine/serveur \
 nom_utilisateur_SFTP \
-mot_de_passe_SFTP \n"
+/chemin/local/clé_ssh_privée \n"
 
 screen -dmS homebridge
 screen -S homebridge -p 0 -X stuff "cd /dossier/local/emplacement/programme && \

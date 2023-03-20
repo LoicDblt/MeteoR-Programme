@@ -63,10 +63,11 @@ faisant usage de ```python3``` et ```pip3```.
 
 ## Programme
 Une fois le programme récupéré et toutes les étapes précédentes effectuées,
-il suffit de lancer la commande suivante :
+il suffit de lancer la commande suivante, en prenant soin de placer la clé SSH
+publique, utilisant le chiffrement Ed25519, sur le serveur au préalable :
 
 ```shell
-python meteor.py <Adresse SFTP> <Port SFTP> <Chemin racine sur le serveur> <Identifiant SFTP> <Mot de passe SFTP>
+python meteor.py <Adresse SFTP> <Port SFTP> <Chemin racine sur le serveur> <Identifiant SFTP> <Clé SSH privée>
 ```
 
 > **Remarque**  

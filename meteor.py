@@ -30,7 +30,7 @@ else:
 	print("{0}|ERREUR| Usage : python3 {1} <Adresse SFTP> "
 		.format(couleur.ROUGE, argv[0]) +
 		"<Chemin racine sur le serveur> <Identifiant SFTP> " +
-		"<Mot de passe SFTP>{0}".format(couleur.FIN_STYLE))
+		"<Clé SSH privée>{0}".format(couleur.FIN_STYLE))
 	exit()
 
 	# Message d'initialisation
@@ -45,8 +45,8 @@ from Adafruit_SSD1306 import SSD1306_128_64
 from board import I2C
 from datetime import datetime, timedelta
 from locale import LC_ALL, setlocale
-from os import path, mkdir
-from paramiko import Transport, SFTPClient, AuthenticationException
+from os import mkdir, path
+import paramiko
 from PIL import Image, ImageDraw, ImageFont
 from shutil import copy2
 from sqlite3 import connect, PARSE_COLNAMES, PARSE_DECLTYPES
@@ -60,8 +60,6 @@ def messageErreur(message):
 
 ## Variables et initialisation #################################################
 	# Chemins et noms des BDD
-if (MODE_LOCAL == False):
-	CHEMIN_DOSSIER_WEB_SERVEUR = argv[2]
 CHEMIN_SAUVEGARDE_LOCAL = "./sauvegardes"
 NOM_BDD_DONNEES = "donnees.db"
 NOM_BDD_GRAPHS = "graphs.db"
@@ -71,9 +69,6 @@ if (path.isdir(CHEMIN_SAUVEGARDE_LOCAL) == False):
 
 	# Formatage
 setlocale(LC_ALL, "")
-
-	# Réseau
-PORT_SFTP = 22
 
 	# Status
 status_envoi = True
@@ -90,11 +85,20 @@ humidite = 0
 tampon_temperature = 0
 tampon_humidite = 0
 
+	# Connexion au serveur
+if (MODE_LOCAL == False):
+	ADRESSE_SFTP = argv[1]
+	CHEMIN_DOSSIER_WEB_SERVEUR = argv[2]
+	IDENTIFIANT = argv[3]
+	CLE_SSH_PRIVEE = argv[4]
+	PORT_SFTP = 22
+
 ## Capteur de température et d'humidité (Si7021) #########
 while True:
 	try:
 		capteur = SI7021(I2C())
 		break
+
 	except RuntimeError:
 		if (erreur_capteur_affichee == False):
 			messageErreur("Initialisation du capteur échouée, " +
@@ -142,30 +146,44 @@ TRANSPARENT = 255
 
 ## Connexion par SFTP ##########################################################
 def connexion_sftp():
-	if (MODE_LOCAL == True):
-		return
-	global session_sftp
+	global client
 	global sftp
 	global erreur_sftp
 	global erreur_sftp_affichee
+	global MODE_LOCAL
+
+	if (MODE_LOCAL == True):
+		return
+
 	try:
-		session_sftp = Transport(argv[1], PORT_SFTP)
-		session_sftp.connect(username = argv[3], password = argv[4])
-		sftp = SFTPClient.from_transport(session_sftp)
+		cle_ssh = paramiko.Ed25519Key.from_private_key_file(CLE_SSH_PRIVEE)
+
+		client = paramiko.Transport(ADRESSE_SFTP, PORT_SFTP)
+		client.connect(username = IDENTIFIANT, pkey = cle_ssh)
+		sftp = paramiko.SFTPClient.from_transport(client)
+
 		erreur_sftp = False
 		if (erreur_sftp_affichee == True):
 			erreur_sftp_affichee = False
 			print("{0}|Info - {1} à {2}| Connexion par SFTP rétablie{3}"
 				.format(couleur.VERT, strftime("%d/%m "), strftime("%H:%M"),
 				couleur.FIN_STYLE))
-	except AuthenticationException:
+
+	except paramiko.AuthenticationException:
 		if (erreur_sftp_affichee == False):
 			erreur_sftp_affichee = True
-			messageErreur("Identifiant ou mot de passe erroné\n" +
-				"Une nouvelle tentative sera néanmoins effectuée après " +
-				"chaque nouvelle mesure.\nVeuillez relancer le programme si " +
+			messageErreur("Identifiant ou mauvaise clé SSH fournie.\n" +
+				"Une nouvelle tentative sera effectuée après chaque " +
+				"nouvelle mesure.\nVeuillez relancer le programme si " +
 				"vous souhaitez modifier les identifiants.")
 		erreur_sftp = True
+
+	except paramiko.ssh_exception.SSHException:
+			messageErreur("Format de clé SSH non reconnu (chiffrement " +
+				"Ed25519 attendu), passage en mode local")
+			MODE_LOCAL = True
+			return
+
 	except:
 		erreur_sftp = True
 		messageErreur("La connexion par SFTP au serveur a échoué")
@@ -173,15 +191,17 @@ def connexion_sftp():
 def deconnexion_sftp():
 	if (MODE_LOCAL == True):
 		return
+
 	if (erreur_sftp == False):
-		if session_sftp : session_sftp.close()
-		if sftp : sftp.close()
+		if client: client.close()
+		if sftp: sftp.close()
 
 ## Envoi de fichiers par SFTP ##################################################
 def envoi_fichier(nom_fichier):
 	chemin = "{0}/bdd/{1}".format(CHEMIN_DOSSIER_WEB_SERVEUR, nom_fichier)
 	try:
 		sftp.put(nom_fichier, chemin)
+
 	except IOError:
 		sftp.mkdir("{0}/bdd".format(CHEMIN_DOSSIER_WEB_SERVEUR))
 		sftp.put(nom_fichier, chemin)
@@ -189,11 +209,13 @@ def envoi_fichier(nom_fichier):
 def gestion_envoi(nom_fichier):
 	if (MODE_LOCAL == True):
 		return
+
 	if (erreur_sftp == False):
 		for nbr_essais in range(1, 3):
 			try:
 				envoi_fichier(nom_fichier)
 				return True
+
 			except:
 				sleep(5 * nbr_essais)
 		messageErreur("L'envoi du fichier {0} a échoué".format(nom_fichier))
@@ -232,6 +254,7 @@ while True:
 		try:
 			tampon_temperature = round(capteur.temperature, 1)
 			break
+
 		except:
 			tampon_temperature = None
 			sleep(0.1)
@@ -244,6 +267,7 @@ while True:
 		try:
 			tampon_humidite = round(capteur.relative_humidity, 1)
 			break
+
 		except:
 			tampon_humidite = None
 			sleep(0.1)
