@@ -71,7 +71,7 @@ if (path.isdir(CHEMIN_SAUVEGARDE_LOCAL) == False):
 setlocale(LC_ALL, "")
 
 	# Status
-status_envoi = True
+status_envoi = False
 erreur_capteur_affichee = False
 erreur_sftp_affichee = False
 
@@ -206,6 +206,10 @@ def envoi_fichier(nom_fichier):
 		sftp.mkdir("{0}/bdd".format(CHEMIN_DOSSIER_WEB_SERVEUR))
 		sftp.put(nom_fichier, chemin)
 
+	except:
+		deconnexion_sftp()
+		connexion_sftp()
+
 def gestion_envoi(nom_fichier):
 	if (MODE_LOCAL == True):
 		return
@@ -239,9 +243,8 @@ print("{0}|Info| Les messages d'erreur s'afficheront dans cette console{1}\n"
 	# Attente de la mise en route des services réseaux de l'OS
 sleep(5)
 
+connexion_sftp()
 while True:
-	connexion_sftp()
-
 	# Calcul du temps de départ
 	temps_arrivee = datetime.utcnow() + timedelta(minutes = 3)
 	temps_arrivee = temps_arrivee.replace(second = 0, microsecond = 0)
@@ -387,9 +390,6 @@ while True:
 		str(strftime("%H:%M")), font = POLICE, fill = TRANSPARENT)
 	affichage.image(affichage_img)
 	affichage.display()
-
-	# Fermeture de la session SFTP
-	deconnexion_sftp()
 
 	# Attente pour la mesure suivante
 	duree_attente = (temps_arrivee - datetime.utcnow()).total_seconds()
