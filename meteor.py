@@ -168,6 +168,7 @@ def connexion_sftp():
 			print("{0}|Info - {1} à {2}| Connexion par SFTP rétablie{3}"
 				.format(couleur.VERT, strftime("%d/%m "), strftime("%H:%M"),
 				couleur.FIN_STYLE))
+		return
 
 	except paramiko.AuthenticationException:
 		if (erreur_sftp_affichee == False):
@@ -177,6 +178,7 @@ def connexion_sftp():
 				"nouvelle mesure.\nVeuillez relancer le programme si " +
 				"vous souhaitez modifier les identifiants.")
 		erreur_sftp = True
+		return
 
 	except paramiko.ssh_exception.SSHException:
 			messageErreur("Format de clé SSH non reconnu (chiffrement " +
@@ -184,9 +186,14 @@ def connexion_sftp():
 			MODE_LOCAL = True
 			return
 
+	except OSError as erreur:
+		messageErreur("Erreur système : " + erreur)
+		return
+
 	except:
 		erreur_sftp = True
 		messageErreur("La connexion par SFTP au serveur a échoué")
+		return
 
 def deconnexion_sftp():
 	if (MODE_LOCAL == True):
@@ -195,20 +202,25 @@ def deconnexion_sftp():
 	if (erreur_sftp == False):
 		if client: client.close()
 		if sftp: sftp.close()
+		return
 
 ## Envoi de fichiers par SFTP ##################################################
 def envoi_fichier(nom_fichier):
 	chemin = "{0}/bdd/{1}".format(CHEMIN_DOSSIER_WEB_SERVEUR, nom_fichier)
 	try:
 		sftp.put(nom_fichier, chemin)
+		return
 
 	except IOError:
 		sftp.mkdir("{0}/bdd".format(CHEMIN_DOSSIER_WEB_SERVEUR))
 		sftp.put(nom_fichier, chemin)
+		return
 
 	except:
+		messageErreur("Tentative de reconnexion au serveur")
 		deconnexion_sftp()
 		connexion_sftp()
+		return
 
 def gestion_envoi(nom_fichier):
 	if (MODE_LOCAL == True):
@@ -223,7 +235,7 @@ def gestion_envoi(nom_fichier):
 			except:
 				sleep(5 * nbr_essais)
 		messageErreur("L'envoi du fichier {0} a échoué".format(nom_fichier))
-	return False
+		return False
 
 ## Récupération des valeurs minimales et maximales #######
 def recup_max_min(operation, temp_humi):
@@ -395,7 +407,3 @@ while True:
 	duree_attente = (temps_arrivee - datetime.utcnow()).total_seconds()
 	if (duree_attente >= 0):
 		sleep(duree_attente)
-	else:
-		messageErreur("Durée d'attente calculée inférieure à 0 | " +
-			"temps_arrivee = {0} - datetime.utcnow = {1}"
-			.format(temps_arrivee, datetime.utcnow()))
