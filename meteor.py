@@ -238,13 +238,9 @@ def gestion_envoi(nom_fichier):
 
 ## Récupération des mesures ####################################################
 def recup_borne(type_operation, type_mesure):
-	if (type_mesure != "temperature" and type_mesure != "humidite"):
-		messageErreur("Type de mesure inconnu")
+	if (type_operation != "MIN" and type_operation != "MAX"):
+		messageErreur("recup_borne | Type de mesure inconnu")
 		return -1
-	
-	elif (type_operation != "MIN" and type_operation != "MAX"):
-		messageErreur("Type de mesure inconnu")
-		return -2
 
 	curseur_donnees.execute("""SELECT {0}({1}) FROM meteor_donnees"""
 		.format(type_operation, type_mesure))
@@ -252,7 +248,7 @@ def recup_borne(type_operation, type_mesure):
 
 def recup_mesure(type_mesure):
 	if (type_mesure != "temperature" and type_mesure != "humidite"):
-		messageErreur("Type de mesure inconnu")
+		messageErreur("recup_mesure | Type de mesure inconnu")
 		return -1
 
 	# Récupération de la mesure (arrondies à 0.1)
@@ -283,25 +279,32 @@ def enregistrement_mesures(temperature, humidite):
 		bdd_donnees.commit()
 		return
 
-def enregistrer_borne(mesure, type_mesure):
-	if (type_mesure != "temp" and type_mesure != "humi"):
-		messageErreur("Type de mesure inconnu")
-		return -1
-	
-	elif (temperature != None and humidite != None):
-		return -3
-
-	elif (mesure > recup_borne("MAX", "max_{0}".format(type_mesure))):
+def enregistrer_borne(temperature, humidite):
+	if (temperature > recup_borne("MAX", "max_temp")):
 		curseur_donnees.execute("""INSERT INTO meteor_donnees
 			(date_mesure, max_temp) VALUES
-			(datetime("now", "localtime"), {0})""".format(mesure))
+			(datetime("now", "localtime"), {0})""".format(temperature))
 		bdd_donnees.commit()
 		return
 
-	elif (mesure > recup_borne("MIN", "min_{0}".format(type_mesure))):
+	elif (temperature < recup_borne("MIN", "min_temp")):
 		curseur_donnees.execute("""INSERT INTO meteor_donnees
 			(date_mesure, min_temp) VALUES
-			(datetime("now", "localtime"), {0})""".format(mesure))
+			(datetime("now", "localtime"), {0})""".format(temperature))
+		bdd_donnees.commit()
+		return
+
+	elif (humidite > recup_borne("MAX", "max_humi")):
+		curseur_donnees.execute("""INSERT INTO meteor_donnees
+			(date_mesure, max_humi) VALUES
+			(datetime("now", "localtime"), {0})""".format(humidite))
+		bdd_donnees.commit()
+		return
+
+	elif (humidite < recup_borne("MIN", "min_humi")):
+		curseur_donnees.execute("""INSERT INTO meteor_donnees
+			(date_mesure, min_humi) VALUES
+			(datetime("now", "localtime"), {0})""".format(humidite))
 		bdd_donnees.commit()
 		return
 
@@ -334,9 +337,9 @@ def nettoyage_bdd():
 	):
 		try:
 			copy2("./{0}".format(NOM_BDD_DONNEES), "{0}/sauvegarde_{1}"
-				.format(NOM_BDD_DONNEES, CHEMIN_SAUVEGARDE_LOCAL))
+				.format(CHEMIN_SAUVEGARDE_LOCAL, NOM_BDD_DONNEES))
 			copy2("./{0}".format(NOM_BDD_GRAPHS), "{0}/sauvegarde_{1}"
-				.format(NOM_BDD_DONNEES, CHEMIN_SAUVEGARDE_LOCAL))
+				.format(CHEMIN_SAUVEGARDE_LOCAL, NOM_BDD_DONNEES))
 		except:
 			messageErreur("Copie BDD de sauvegarde échouée")
 
@@ -408,8 +411,7 @@ while True:
 	enregistrement_mesures(temperature, humidite)
 
 	# Enregistrement des bornes min et max
-	enregistrer_borne(temperature, "temp")
-	enregistrer_borne(humidite, "humi")
+	enregistrer_borne(temperature, humidite)
 
 	# Envoi de la BDD des données actuelles au serveur
 	gestion_envoi(NOM_BDD_DONNEES)
