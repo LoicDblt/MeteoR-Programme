@@ -113,8 +113,7 @@ curseur_donnees.execute("""CREATE TABLE IF NOT EXISTS meteor_donnees
 	(date_mesure CHAR, temperature_ambiante FLOAT, humidite_ambiante FLOAT,
 	max_temp FLOAT, min_temp FLOAT, max_humi FLOAT, min_humi FLOAT)""")
 curseur_donnees.execute("""SELECT MIN(max_humi) FROM meteor_donnees""")
-bdd_deja_init = curseur_donnees.fetchall()
-bdd_deja_init_float = bdd_deja_init[0][0]
+bdd_deja_init_float = curseur_donnees.fetchall()[0][0]
 
 	# Initialise les valeurs min et max de température et d'humidité
 if (bdd_deja_init_float == None):
@@ -238,18 +237,30 @@ def gestion_envoi(nom_fichier):
 		return False
 
 ## Récupération des mesures ####################################################
-def recup_min_max(operation, temp_humi):
+def recup_borne(type_operation, type_mesure):
+	if (type_mesure != "temperature" and type_mesure != "humidite"):
+		messageErreur("Type de mesure inconnu")
+		return -1
+	
+	elif (type_operation != "MIN" and type_operation != "MAX"):
+		messageErreur("Type de mesure inconnu")
+		return -2
+
 	curseur_donnees.execute("""SELECT {0}({1}) FROM meteor_donnees"""
-		.format(operation, temp_humi))
-	min_max_temp_humi_valeur = curseur_donnees.fetchall()
-	return min_max_temp_humi_valeur[0][0]
+		.format(type_operation, type_mesure))
+	return curseur_donnees.fetchall()[0][0]
 
 def recup_mesure(type_mesure):
+	if (type_mesure != "temperature" and type_mesure != "humidite"):
+		messageErreur("Type de mesure inconnu")
+		return -1
+
 	# Récupération de la mesure (arrondies à 0.1)
 	for _ in range(4):
 		try:
 			if (type_mesure == "temperature"):
 				tampon = round(capteur.temperature, 1)
+
 			elif (type_mesure == "humidite"):
 				tampon = round(capteur.relative_humidity, 1)
 			break
@@ -263,19 +274,36 @@ def recup_mesure(type_mesure):
 	return mesure
 
 ## Enregistrement des mesures ##################################################
+def enregistrement_mesures(temperature, humidite):
+	if (temperature != None and humidite != None):
+		curseur_donnees.execute("""INSERT INTO meteor_donnees
+			(date_mesure, temperature_ambiante, humidite_ambiante) VALUES
+			(datetime("now", "localtime"), {0}, {1})"""
+			.format(temperature, humidite))
+		bdd_donnees.commit()
+		return
+
 def enregistrer_borne(mesure, type_mesure):
-	if (mesure > recup_min_max("MAX", "max_{0}".format(type_mesure))):
+	if (type_mesure != "temp" and type_mesure != "humi"):
+		messageErreur("Type de mesure inconnu")
+		return -1
+	
+	elif (temperature != None and humidite != None):
+		return -3
+
+	elif (mesure > recup_borne("MAX", "max_{0}".format(type_mesure))):
 		curseur_donnees.execute("""INSERT INTO meteor_donnees
 			(date_mesure, max_temp) VALUES
 			(datetime("now", "localtime"), {0})""".format(mesure))
 		bdd_donnees.commit()
+		return
 
-	if (mesure > recup_min_max("MIN", "min_{0}".format(type_mesure))):
+	elif (mesure > recup_borne("MIN", "min_{0}".format(type_mesure))):
 		curseur_donnees.execute("""INSERT INTO meteor_donnees
 			(date_mesure, min_temp) VALUES
 			(datetime("now", "localtime"), {0})""".format(mesure))
 		bdd_donnees.commit()
-	return
+		return
 
 def enregistrer_moyennes():
 	# Ajout de la moyenne dans la BDD
@@ -304,10 +332,13 @@ def nettoyage_bdd():
 		(localtime().tm_isdst == 1 and maintenant.hour == 22) or
 		(localtime().tm_isdst == 0 and maintenant.hour == 23)
 	):
-		copy2("./{0}".format(NOM_BDD_DONNEES), "{0}/sauvegarde_{1}"
-			.format(NOM_BDD_DONNEES, CHEMIN_SAUVEGARDE_LOCAL))
-		copy2("./{0}".format(NOM_BDD_GRAPHS), "{0}/sauvegarde_{1}"
-			.format(NOM_BDD_DONNEES, CHEMIN_SAUVEGARDE_LOCAL))
+		try:
+			copy2("./{0}".format(NOM_BDD_DONNEES), "{0}/sauvegarde_{1}"
+				.format(NOM_BDD_DONNEES, CHEMIN_SAUVEGARDE_LOCAL))
+			copy2("./{0}".format(NOM_BDD_GRAPHS), "{0}/sauvegarde_{1}"
+				.format(NOM_BDD_DONNEES, CHEMIN_SAUVEGARDE_LOCAL))
+		except:
+			messageErreur("Copie BDD de sauvegarde échouée")
 
 			# Nettoyage BDD des graphs
 		curseur_graphs.execute("""DELETE FROM meteor_graphs WHERE
@@ -330,6 +361,9 @@ def nettoyage_bdd():
 
 ## Affichage des mesures #######################################################
 def afficher_donnees(temperature, humidite):
+	if (temperature == None or humidite == None):
+		return -1
+
 	dessin = ImageDraw.Draw(affichage_img)
 	dessin.rectangle((0, 0, affichage_largeur, affichage_hauteur), outline = 0,
 		fill = 0)
@@ -371,11 +405,7 @@ while True:
 	humidite = recup_mesure("humidite")
 
 	# Enregistrement de la température et de l'humidité
-	curseur_donnees.execute("""INSERT INTO meteor_donnees
-		(date_mesure, temperature_ambiante, humidite_ambiante) VALUES
-		(datetime("now", "localtime"), {0}, {1})"""
-		.format(temperature, humidite))
-	bdd_donnees.commit()
+	enregistrement_mesures(temperature, humidite)
 
 	# Enregistrement des bornes min et max
 	enregistrer_borne(temperature, "temp")
