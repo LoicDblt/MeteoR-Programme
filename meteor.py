@@ -93,7 +93,7 @@ if (MODE_LOCAL == False):
 	CLE_SSH_PRIVEE = argv[4]
 	PORT_SFTP = 22
 
-## Capteur de température et d'humidité (Si7021) #########
+## Initialisation capteur de température et d'humidité (Si7021) ################
 while True:
 	try:
 		capteur = SI7021(I2C())
@@ -237,12 +237,115 @@ def gestion_envoi(nom_fichier):
 		messageErreur("L'envoi du fichier {0} a échoué".format(nom_fichier))
 		return False
 
-## Récupération des valeurs minimales et maximales #######
-def recup_max_min(operation, temp_humi):
+## Récupération des mesures ####################################################
+def recup_min_max(operation, temp_humi):
 	curseur_donnees.execute("""SELECT {0}({1}) FROM meteor_donnees"""
 		.format(operation, temp_humi))
-	max_min_temp_humi_valeur = curseur_donnees.fetchall()
-	return max_min_temp_humi_valeur[0][0]
+	min_max_temp_humi_valeur = curseur_donnees.fetchall()
+	return min_max_temp_humi_valeur[0][0]
+
+def recup_mesure(type_mesure):
+	# Récupération de la mesure (arrondies à 0.1)
+	for _ in range(4):
+		try:
+			if (type_mesure == "temperature"):
+				tampon = round(capteur.temperature, 1)
+			elif (type_mesure == "humidite"):
+				tampon = round(capteur.relative_humidity, 1)
+			break
+
+		except:
+			tampon = None
+			sleep(0.1)
+
+	if tampon is not None:
+		mesure = tampon
+	return mesure
+
+## Enregistrement des mesures ##################################################
+def enregistrer_borne(mesure, type_mesure):
+	if (mesure > recup_min_max("MAX", "max_{0}".format(type_mesure))):
+		curseur_donnees.execute("""INSERT INTO meteor_donnees
+			(date_mesure, max_temp) VALUES
+			(datetime("now", "localtime"), {0})""".format(mesure))
+		bdd_donnees.commit()
+
+	if (mesure > recup_min_max("MIN", "min_{0}".format(type_mesure))):
+		curseur_donnees.execute("""INSERT INTO meteor_donnees
+			(date_mesure, min_temp) VALUES
+			(datetime("now", "localtime"), {0})""".format(mesure))
+		bdd_donnees.commit()
+	return
+
+def enregistrer_moyennes():
+	# Ajout de la moyenne dans la BDD
+	curseur_donnees.execute("""SELECT AVG(temperature_ambiante),
+		AVG(humidite_ambiante) FROM meteor_donnees WHERE
+		date_mesure >= datetime("now", "localtime", "-1 hour", "1 minute")
+		AND temperature_ambiante IS NOT NULL AND
+		humidite_ambiante IS NOT NULL""")
+	moyenne_donnees = curseur_donnees.fetchall()[0]
+
+	# Vérification que les données existent (changement de fuseau été/hiver)
+	if (moyenne_donnees[0] != None and moyenne_donnees[1] != None):
+		curseur_graphs.execute("""INSERT INTO meteor_graphs
+			(date_mesure, temperature_ambiante, humidite_ambiante) VALUES
+			(datetime("now", "localtime"), {0}, {1})"""
+			.format(round(moyenne_donnees[0]/1, 1),
+			round(moyenne_donnees[1]/1, 1)))
+		bdd_graphs.commit()
+		status_envoi = gestion_envoi(NOM_BDD_GRAPHS)
+	return status_envoi
+
+def nettoyage_bdd():
+	# Sauvegarde puis nettoyage des BDD, une fois par jour, à minuit
+	# (en fonction du fuseau local français en vigueur)
+	if (
+		(localtime().tm_isdst == 1 and maintenant.hour == 22) or
+		(localtime().tm_isdst == 0 and maintenant.hour == 23)
+	):
+		copy2("./{0}".format(NOM_BDD_DONNEES), "{0}/sauvegarde_{1}"
+			.format(NOM_BDD_DONNEES, CHEMIN_SAUVEGARDE_LOCAL))
+		copy2("./{0}".format(NOM_BDD_GRAPHS), "{0}/sauvegarde_{1}"
+			.format(NOM_BDD_DONNEES, CHEMIN_SAUVEGARDE_LOCAL))
+
+			# Nettoyage BDD des graphs
+		curseur_graphs.execute("""DELETE FROM meteor_graphs WHERE
+			date_mesure <= datetime("now", "localtime", "-31 days",
+			"-3 minutes")""")
+		bdd_graphs.commit()
+
+			# Nettoyage BDD des données
+		curseur_donnees.execute("""DELETE FROM meteor_donnees WHERE
+			(max_temp NOT IN (SELECT MAX(max_temp) FROM meteor_donnees) OR
+			min_temp NOT IN (SELECT MIN(min_temp) FROM meteor_donnees) OR
+			max_humi NOT IN (SELECT MAX(max_humi) FROM meteor_donnees) OR
+			min_humi NOT IN (SELECT MIN(min_humi) FROM meteor_donnees)) OR
+			(temperature_ambiante IS NOT NULL AND
+			humidite_ambiante IS NOT NULL AND
+			date_mesure NOT IN (SELECT MAX(date_mesure)
+			FROM meteor_donnees))""")
+		bdd_donnees.commit()
+	return
+
+## Affichage des mesures #######################################################
+def afficher_donnees(temperature, humidite):
+	dessin = ImageDraw.Draw(affichage_img)
+	dessin.rectangle((0, 0, affichage_largeur, affichage_hauteur), outline = 0,
+		fill = 0)
+	dessin.text((affichage_abscisse, affichage_haut), "Date : " +
+		str(strftime("%d %B")), font = POLICE, fill = TRANSPARENT)
+	dessin.text((affichage_abscisse, affichage_haut + 16), "Température : " +
+		str(temperature) + "°C", font = POLICE, fill = 255)
+	dessin.text((affichage_abscisse, affichage_haut + 32), "Humidité : " +
+		str(humidite) + "%", font = POLICE, fill = TRANSPARENT)
+	dessin.text((affichage_abscisse, affichage_haut + 48),
+		"Dernière mise à jour : ", font = POLICE, fill = TRANSPARENT)
+	dessin.text((affichage_abscisse, affichage_haut + 56),
+		str(strftime("%H:%M")), font = POLICE, fill = TRANSPARENT)
+	affichage.image(affichage_img)
+	affichage.display()
+	return
 
 ## Programme principal #########################################################
 	# Messages d'information
@@ -263,145 +366,42 @@ while True:
 	if (temps_arrivee.minute > 0 and temps_arrivee.minute < 3):
 		temps_arrivee = temps_arrivee.replace(minute = 0)
 
-	# Récupération des données (arrondies à 0.1)
-		# Température
-	for i in range(4):
-		try:
-			tampon_temperature = round(capteur.temperature, 1)
-			break
+	# Récupère les mesures
+	temperature = recup_mesure("temperature")
+	humidite = recup_mesure("humidite")
 
-		except:
-			tampon_temperature = None
-			sleep(0.1)
-
-	if tampon_temperature is not None:
-		temperature = tampon_temperature
-
-		# Humidité
-	for i in range(4):
-		try:
-			tampon_humidite = round(capteur.relative_humidity, 1)
-			break
-
-		except:
-			tampon_humidite = None
-			sleep(0.1)
-
-	if tampon_humidite is not None:
-		humidite = tampon_humidite
-
-		# Enregistrement de la température et de l'humidité
+	# Enregistrement de la température et de l'humidité
 	curseur_donnees.execute("""INSERT INTO meteor_donnees
 		(date_mesure, temperature_ambiante, humidite_ambiante) VALUES
 		(datetime("now", "localtime"), {0}, {1})"""
 		.format(temperature, humidite))
 	bdd_donnees.commit()
 
-		# Température max-min
-	if (temperature > recup_max_min("MAX", "max_temp")):
-		curseur_donnees.execute("""INSERT INTO meteor_donnees
-			(date_mesure, max_temp) VALUES
-			(datetime("now", "localtime"), {0})""".format(temperature))
-		bdd_donnees.commit()
+	# Enregistrement des bornes min et max
+	enregistrer_borne(temperature, "temp")
+	enregistrer_borne(humidite, "humi")
 
-	if (temperature < recup_max_min("MIN", "min_temp")):
-		curseur_donnees.execute("""INSERT INTO meteor_donnees
-			(date_mesure, min_temp) VALUES
-			(datetime("now", "localtime"), {0})""".format(temperature))
-		bdd_donnees.commit()
-
-		# Humidité max-min
-	if (humidite > recup_max_min("MAX", "max_humi")):
-		curseur_donnees.execute("""INSERT INTO meteor_donnees
-			(date_mesure, max_humi) VALUES
-			(datetime("now", "localtime"), {0})""".format(humidite))
-		bdd_donnees.commit()
-
-	if (humidite < recup_max_min("MIN", "min_humi")):
-		curseur_donnees.execute("""INSERT INTO meteor_donnees
-			(date_mesure, min_humi) VALUES
-			(datetime("now", "localtime"), {0})""".format(humidite))
-		bdd_donnees.commit()
-
-		# Envoi de la BDD des données actuelles au serveur
+	# Envoi de la BDD des données actuelles au serveur
 	gestion_envoi(NOM_BDD_DONNEES)
 
-		# Renvoi la BDD des graphs si cela avait échoué précédemment
+	# Renvoi la BDD des graphs si cela avait échoué précédemment
 	if (status_envoi == False and gestion_envoi(NOM_BDD_GRAPHS) == True):
 		status_envoi = True
 
 	# Calcul et enregistrement des moyennes
 	maintenant = datetime.utcnow()
 	if (maintenant.hour == temps_moyenne.hour):
-			# Calcul l'heure pour la prochaine moyenne
+		# Calcul l'heure pour la prochaine moyenne
 		temps_moyenne = datetime.utcnow() + timedelta(hours = 1)
 
-			# Ajout de la moyenne dans la BDD
-		curseur_donnees.execute("""SELECT AVG(temperature_ambiante),
-			AVG(humidite_ambiante) FROM meteor_donnees WHERE
-			date_mesure >= datetime("now", "localtime", "-1 hour", "1 minute")
-			AND temperature_ambiante IS NOT NULL AND
-			humidite_ambiante IS NOT NULL""")
-		moyenne_donnees = curseur_donnees.fetchall()[0]
+		# Enregistrement de la moyenne pour température et humidité
+		status_envoi = enregistrer_moyennes()
 
-			# Vérification que les données existent
-			# (changement de fuseau été/hiver)
-		if (moyenne_donnees[0] != None and moyenne_donnees[1] != None):
-			curseur_graphs.execute("""INSERT INTO meteor_graphs
-				(date_mesure, temperature_ambiante, humidite_ambiante) VALUES
-				(datetime("now", "localtime"), {0}, {1})"""
-				.format(round(moyenne_donnees[0]/1, 1),
-				round(moyenne_donnees[1]/1, 1)))
-
-			bdd_graphs.commit()
-
-			status_envoi = gestion_envoi(NOM_BDD_GRAPHS)
-
-			# Sauvegarde puis nettoyage des BDD, une fois par jour, à minuit
-			# (en fonction du fuseau local français en vigueur)
-		if (
-			(localtime().tm_isdst == 1 and maintenant.hour == 22) or
-			(localtime().tm_isdst == 0 and maintenant.hour == 23)
-		):
-			copy2("./{0}".format(NOM_BDD_DONNEES), "{0}/donnees_sauvegarde.db"
-				.format(CHEMIN_SAUVEGARDE_LOCAL))
-			copy2("./{0}".format(NOM_BDD_GRAPHS), "{0}/graphs_sauvegarde.db"
-				.format(CHEMIN_SAUVEGARDE_LOCAL))
-
-				# Nettoyage BDD des graphs
-			curseur_graphs.execute("""DELETE FROM meteor_graphs WHERE
-				date_mesure <= datetime("now", "localtime", "-31 days",
-				"-3 minutes")""")
-			bdd_graphs.commit()
-
-				# Nettoyage BDD des données
-			curseur_donnees.execute("""DELETE FROM meteor_donnees WHERE
-				(max_temp NOT IN (SELECT MAX(max_temp) FROM meteor_donnees) OR
-				min_temp NOT IN (SELECT MIN(min_temp) FROM meteor_donnees) OR
-				max_humi NOT IN (SELECT MAX(max_humi) FROM meteor_donnees) OR
-				min_humi NOT IN (SELECT MIN(min_humi) FROM meteor_donnees)) OR
-				(temperature_ambiante IS NOT NULL AND
-				humidite_ambiante IS NOT NULL AND
-				date_mesure NOT IN (SELECT MAX(date_mesure)
-				FROM meteor_donnees))""")
-			bdd_donnees.commit()
+		# Nettoyage des BDD une fois par jour
+		nettoyage_bdd()
 
 	# Affichage des informations sur l'écran
-	dessin = ImageDraw.Draw(affichage_img)
-	dessin.rectangle((0, 0, affichage_largeur, affichage_hauteur), outline = 0,
-		fill = 0)
-	dessin.text((affichage_abscisse, affichage_haut), "Date : " +
-		str(strftime("%d %B")), font = POLICE, fill = TRANSPARENT)
-	dessin.text((affichage_abscisse, affichage_haut + 16), "Température : " +
-		str(temperature) + "°C", font = POLICE, fill = 255)
-	dessin.text((affichage_abscisse, affichage_haut + 32), "Humidité : " +
-		str(humidite) + "%", font = POLICE, fill = TRANSPARENT)
-	dessin.text((affichage_abscisse, affichage_haut + 48),
-		"Dernière mise à jour : ", font = POLICE, fill = TRANSPARENT)
-	dessin.text((affichage_abscisse, affichage_haut + 56),
-		str(strftime("%H:%M")), font = POLICE, fill = TRANSPARENT)
-	affichage.image(affichage_img)
-	affichage.display()
+	afficher_donnees(temperature, humidite)
 
 	# Attente pour la mesure suivante
 	duree_attente = (temps_arrivee - datetime.utcnow()).total_seconds()
