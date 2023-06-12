@@ -6,7 +6,7 @@
 ################################################################################
 
 ## Initialisation ##############################################################
-	# Couleurs pour les messages affichés à l'utilisateur
+# Couleurs pour les messages affichés à l'utilisateur
 class couleur:
 	BLEU_CLAIR = "\033[36m"
 	BLEU_FONCE = "\033[94m"
@@ -15,88 +15,92 @@ class couleur:
 	VERT = "\033[32m"
 	FIN_STYLE = "\033[0m"
 
-	# Vérifie le nombre d'arguments
-from sys import argv
+import os
+import sys
 
-# Mode local (pas d'arguments)
-if (len(argv) == 1):
-	MODE_LOCAL = True
+# Vérifie le nombre d'arguments et sélectionne le mode de fonctionnement
+# (local ou connecté)
+if (len(sys.argv) == 1):
+	mode_local = True
 
-# Mode connecté
-elif (len(argv) == 5):
-	MODE_LOCAL = False
+elif (len(sys.argv) == 5):
+	mode_local = False
 
 else:
-	print("{0}|ERREUR| Usage : python3 {1} <Adresse SFTP> "
-		.format(couleur.ROUGE, argv[0]) +
+	print("{0}|Erreur| Usage : python3 {1} <Adresse SFTP> "
+		.format(couleur.ROUGE, sys.argv[0]) +
 		"<Chemin racine sur le serveur> <Identifiant SFTP> " +
 		"<Clé SSH privée>{0}".format(couleur.FIN_STYLE))
 	exit()
 
-	# Message d'initialisation
-from os import system
-system("clear")
-print("{0}|INFO| Initialisation du programme, veuillez patienter...{1}"
+# Message d'initialisation
+os.system("clear")
+print("{0}|Info| Initialisation du programme, veuillez patienter...{1}"
 	.format(couleur.BLEU_CLAIR, couleur.FIN_STYLE))
 
 ## Import des modules ##########################################################
-from adafruit_si7021 import SI7021
-from Adafruit_SSD1306 import SSD1306_128_64
-from board import I2C
-from datetime import datetime, timedelta
-from locale import LC_ALL, setlocale
-from os import mkdir, path
+import adafruit_si7021
+import Adafruit_SSD1306
+import board
+import datetime as dt
+import glob
+import locale
 import paramiko
-from PIL import Image, ImageDraw, ImageFont
-from shutil import copy2
-from sqlite3 import connect, PARSE_COLNAMES, PARSE_DECLTYPES
-from time import localtime, sleep, strftime
+import PIL as pil
+import shutil
+import sqlite3
+import time
 
 ## Messages d'erreur ###########################################################
+"""
+@brief	Affiche un message d'erreur en rouge, avec la date et l'heure
+@param	message	Le message d'erreur à afficher
+"""
 def messageErreur(message):
 	print("{0}|Erreur - {1} à {2}| {3}{4}"
-		.format(couleur.ROUGE, strftime("%d/%m"), strftime("%H:%M"),
+		.format(couleur.ROUGE, time.strftime("%d/%m"), time.strftime("%H:%M"),
 		message, couleur.FIN_STYLE))
+	return
 
 ## Variables et initialisation #################################################
-	# Chemins et noms des BDD
+# Chemins et noms des bases de données
 CHEMIN_SAUVEGARDE_LOCAL = "./sauvegardes"
-NOM_BDD_DONNEES = "donnees.db"
-NOM_BDD_GRAPHS = "graphs.db"
+NOM_BDD_MESURES = "donnees.db"
+NOM_BDD_MOYENNES = "graphs.db"
 
-if (path.isdir(CHEMIN_SAUVEGARDE_LOCAL) == False):
-	mkdir(CHEMIN_SAUVEGARDE_LOCAL)
+# Créé le dossier de sauvegarde local s'il n'existe pas
+if (os.path.isdir(CHEMIN_SAUVEGARDE_LOCAL) == False):
+	os.mkdir(CHEMIN_SAUVEGARDE_LOCAL)
 
-	# Formatage
-setlocale(LC_ALL, "")
+# Formatage de la date et de l'heure
+locale.setlocale(locale.LC_ALL, "")
 
-	# Status
+# Status
 status_envoi = False
 erreur_capteur_affichee = False
 erreur_sftp_affichee = False
 
-	# Gestion du temps
+# Gestion du temps
 erreur_sftp = False
-temps_moyenne = datetime.utcnow() + timedelta(hours = 1)
+temps_moyenne = dt.datetime.utcnow() + dt.timedelta(hours = 1)
+NBR_JOURS = 31
 
-	# Valeurs température et humidité
+# Mesures de température et d'humidité
 temperature = 0
 humidite = 0
-tampon_temperature = 0
-tampon_humidite = 0
 
-	# Connexion au serveur
-if (MODE_LOCAL == False):
-	ADRESSE_SFTP = argv[1]
-	CHEMIN_DOSSIER_WEB_SERVEUR = argv[2]
-	IDENTIFIANT = argv[3]
-	CLE_SSH_PRIVEE = argv[4]
+# Paramètres de connexion au serveur SFTP
+if (mode_local == False):
+	ADRESSE_SFTP = sys.argv[1]
+	CHEMIN_DOSSIER_WEB_SERVEUR = sys.argv[2]
+	IDENTIFIANT = sys.argv[3]
+	CLE_SSH_PRIVEE = sys.argv[4]
 	PORT_SFTP = 22
 
 ## Initialisation capteur de température et d'humidité (Si7021) ################
 while True:
 	try:
-		capteur = SI7021(I2C())
+		capteur = adafruit_si7021.SI7021(board.I2C())
 		break
 
 	except RuntimeError:
@@ -105,53 +109,61 @@ while True:
 				"correction en cours, veuillez patienter...")
 			erreur_capteur_affichee = True
 
-## SQLite ######################################################################
-	# BDD des données
-bdd_donnees = connect(NOM_BDD_DONNEES)
-curseur_donnees = bdd_donnees.cursor()
-curseur_donnees.execute("""CREATE TABLE IF NOT EXISTS meteor_donnees
+## Bases de données ############################################################
+# Créé la base de données des mesures, si elle n'existe pas
+bdd_mesures = sqlite3.connect(NOM_BDD_MESURES)
+curseur_mesures = bdd_mesures.cursor()
+curseur_mesures.execute("""CREATE TABLE IF NOT EXISTS meteor_donnees
 	(date_mesure CHAR, temperature_ambiante FLOAT, humidite_ambiante FLOAT,
 	max_temp FLOAT, min_temp FLOAT, max_humi FLOAT, min_humi FLOAT)""")
-curseur_donnees.execute("""SELECT MIN(max_humi) FROM meteor_donnees""")
-bdd_deja_init_float = curseur_donnees.fetchall()[0][0]
 
-	# Initialise les valeurs min et max de température et d'humidité
-if (bdd_deja_init_float == None):
-	curseur_donnees.execute("""INSERT INTO meteor_donnees
+# Initialise les mesures min et max de température et d'humidité, si la base de
+# données est vide
+curseur_mesures.execute("""SELECT MIN(max_humi) FROM meteor_donnees""")
+mesure_min = curseur_mesures.fetchall()[0][0]
+
+if (mesure_min == None):
+	curseur_mesures.execute("""INSERT INTO meteor_donnees
 		(date_mesure, max_temp, min_temp, max_humi, min_humi) VALUES
 		(datetime("now", "localtime"), 0, 100, 0, 100)""")
-	bdd_donnees.commit()
+	bdd_mesures.commit()
 
-	# BDD des graphs
-bdd_graphs = connect(NOM_BDD_GRAPHS,
-	detect_types = PARSE_COLNAMES|PARSE_DECLTYPES)
-curseur_graphs = bdd_graphs.cursor()
-curseur_graphs.execute("""CREATE TABLE IF NOT EXISTS meteor_graphs
+# Créé la base de données des moyennes, si elle n'existe pas
+bdd_moyennes = sqlite3.connect(NOM_BDD_MOYENNES, detect_types =
+	sqlite3.PARSE_COLNAMES|sqlite3.PARSE_DECLTYPES)
+curseur_moyennes = bdd_moyennes.cursor()
+curseur_moyennes.execute("""CREATE TABLE IF NOT EXISTS meteor_graphs
 	(date_mesure CHAR, temperature_ambiante FLOAT, humidite_ambiante FLOAT)""")
-bdd_graphs.commit()
+bdd_moyennes.commit()
 
 ## Paramétrage de l'écran ######################################################
-affichage = SSD1306_128_64(rst = None)
+affichage = Adafruit_SSD1306.SSD1306_128_64(rst = None)
 affichage.begin()
 affichage.clear()
 affichage.display()
-affichage_largeur = affichage.width
-affichage_hauteur = affichage.height
-affichage_haut = -2
-affichage_abscisse = 0
-affichage_img = Image.new('1', (affichage_largeur, affichage_hauteur))
-POLICE = ImageFont.load_default()
+AFFICHAGE_LARGEUR = affichage.width
+AFFICHAGE_HAUTEUR = affichage.height
+AFFICHAGE_HAUT = -2
+AFFICHAGE_ABSCISSE = 0
+AFFICHAGE_IMAGE = pil.Image.new('1', (AFFICHAGE_LARGEUR, AFFICHAGE_HAUTEUR))
+POLICE = pil.ImageFont.load_default()
 TRANSPARENT = 255
 
 ## Connexion par SFTP ##########################################################
+"""
+@brief	Etablie la connexion SFTP au serveur
+@return 0 si la connexion est établie, -1 en cas d'erreur d'autentification,
+		-2 en cas d'erreur de formatage de la clé privée, -3 en cas d'erreur de
+		connexion au serveur
+"""
 def connexion_sftp():
 	global client
 	global sftp
 	global erreur_sftp
 	global erreur_sftp_affichee
-	global MODE_LOCAL
+	global mode_local
 
-	if (MODE_LOCAL == True):
+	if (mode_local == True):
 		return
 
 	try:
@@ -165,9 +177,9 @@ def connexion_sftp():
 		if (erreur_sftp_affichee == True):
 			erreur_sftp_affichee = False
 			print("{0}|Info - {1} à {2}| Connexion par SFTP rétablie{3}"
-				.format(couleur.VERT, strftime("%d/%m "), strftime("%H:%M"),
-				couleur.FIN_STYLE))
-		return
+				.format(couleur.VERT, time.strftime("%d/%m "),
+				time.strftime("%H:%M"), couleur.FIN_STYLE))
+		return 0
 
 	except paramiko.AuthenticationException:
 		if (erreur_sftp_affichee == False):
@@ -177,25 +189,28 @@ def connexion_sftp():
 				"nouvelle mesure.\nVeuillez relancer le programme si " +
 				"vous souhaitez modifier les identifiants.")
 		erreur_sftp = True
-		return
+		return -1
 
 	except paramiko.ssh_exception.SSHException:
 			messageErreur("Format de clé SSH non reconnu (chiffrement " +
 				"Ed25519 attendu), passage en mode local")
-			MODE_LOCAL = True
-			return
+			mode_local = True
+			return -2
 
 	except OSError as erreur:
-		messageErreur("Erreur système : " + erreur)
-		return
+		messageErreur(erreur)
+		return -3
 
 	except:
 		erreur_sftp = True
 		messageErreur("La connexion par SFTP au serveur a échoué")
-		return
+		return -4
 
+"""
+@brief	Ferme la connexion en SFTP au serveur, si elle est ouverte
+"""
 def deconnexion_sftp():
-	if (MODE_LOCAL == True):
+	if (mode_local == True):
 		return
 
 	if (erreur_sftp == False):
@@ -204,201 +219,290 @@ def deconnexion_sftp():
 		return
 
 ## Envoi de fichiers par SFTP ##################################################
+"""
+@brief	Envoi la base de données SQLite au serveur
+@param	nom_fichier	Le nom du fichier à envoyer
+@return	0 si l'envoi s'est bien déroulé, -1 si le dossier n'existe pas sur le
+		serveur, -2 si la connexion a échoué
+"""
 def envoi_fichier(nom_fichier):
 	chemin = "{0}/bdd/{1}".format(CHEMIN_DOSSIER_WEB_SERVEUR, nom_fichier)
 	try:
 		sftp.put(nom_fichier, chemin)
-		return
+		return 0
 
 	except IOError:
 		sftp.mkdir("{0}/bdd".format(CHEMIN_DOSSIER_WEB_SERVEUR))
 		sftp.put(nom_fichier, chemin)
-		return
+		return -1
 
 	except:
 		messageErreur("Tentative de reconnexion au serveur")
 		deconnexion_sftp()
 		connexion_sftp()
-		return
+		return -2
 
+"""
+@brief	Gère l'envoi de la base de données SQLite au serveur.
+		En cas, d'erreur de connexion, plusieurs tentatives seront effectuées.
+@param	nom_fichier	Le nom du fichier à envoyer
+@return	0 si l'envoi a réussi, -1 en cas d'erreur
+"""
 def gestion_envoi(nom_fichier):
-	if (MODE_LOCAL == True):
+	if (mode_local == True):
 		return
 
 	if (erreur_sftp == False):
 		for nbr_essais in range(1, 3):
 			try:
 				envoi_fichier(nom_fichier)
-				return True
+				return 0
 
 			except:
-				sleep(5 * nbr_essais)
+				time.sleep(5 * nbr_essais)
 		messageErreur("L'envoi du fichier {0} a échoué".format(nom_fichier))
-		return False
-
-## Récupération des mesures ####################################################
-def recup_borne(type_operation, type_mesure):
-	if (type_operation != "MIN" and type_operation != "MAX"):
-		messageErreur("recup_borne | Type de mesure inconnu")
 		return -1
 
-	curseur_donnees.execute("""SELECT {0}({1}) FROM meteor_donnees"""
-		.format(type_operation, type_mesure))
-	return curseur_donnees.fetchall()[0][0]
-
+## Récupération des mesures ####################################################
+"""
+@brief	Récupère la mesure de température ou d'humidité
+@param	type_mesure	Chaîne de caractères indiquant le type de mesure
+		("temperature" ou "humidite")
+@return	La mesure récupérée, ou None en cas d'erreur
+"""
 def recup_mesure(type_mesure):
 	if (type_mesure != "temperature" and type_mesure != "humidite"):
 		messageErreur("recup_mesure | Type de mesure inconnu")
-		return -1
+		return None
 
 	# Récupération de la mesure (arrondies à 0.1)
 	for _ in range(4):
 		try:
 			if (type_mesure == "temperature"):
-				tampon = round(capteur.temperature, 1)
+				mesure = round(capteur.temperature, 1)
 
 			elif (type_mesure == "humidite"):
-				tampon = round(capteur.relative_humidity, 1)
+				mesure = round(capteur.relative_humidity, 1)
 			break
 
 		except:
-			tampon = None
-			sleep(0.1)
-
-	if tampon is not None:
-		mesure = tampon
+			mesure = None
+			time.sleep(0.1)
 	return mesure
 
+"""
+@brief	Récupère la mesure minimale ou maximale de température ou d'humidité
+@param	type_operation	Chaîne de caractères indiquant le type d'opération
+						("MIN" ou "MAX")
+@param	type_mesure		Chaîne de caractères indiquant le type de mesure
+						("temperature" ou "humidite")
+@return	La mesure récupérée, -1 en cas d'erreur de type d'opération, ou -2 en
+		cas d'erreur de type de mesure
+"""
+def recup_borne(type_operation, type_mesure):
+	if (type_operation != "MIN" and type_operation != "MAX"):
+		messageErreur("recup_borne | Type d'opération inconnu")
+		return -1
+
+	elif (
+		type_mesure != "max_temp" and type_mesure != "min_temp" and
+		type_mesure != "max_humi" and type_mesure != "min_humi"
+	):
+		messageErreur("recup_borne | Type de mesure inconnu")
+		return -2
+
+	curseur_mesures.execute("""SELECT {0}({1}) FROM meteor_donnees"""
+		.format(type_operation, type_mesure))
+	return curseur_mesures.fetchall()[0][0]
+
 ## Enregistrement des mesures ##################################################
+"""
+@brief	Enregistre la mesure de température et d'humidité dans la base de
+		données
+@param	temperature	Mesure de température à enregistrer
+@param	humidite	Mesure d'humidité à enregistrer
+@return	0 si les mesures ont été enregistrées, -1 en cas d'erreur
+"""
 def enregistrement_mesures(temperature, humidite):
-	if (temperature != None and humidite != None):
-		curseur_donnees.execute("""INSERT INTO meteor_donnees
-			(date_mesure, temperature_ambiante, humidite_ambiante) VALUES
-			(datetime("now", "localtime"), {0}, {1})"""
-			.format(temperature, humidite))
-		bdd_donnees.commit()
-		return
+	if (temperature == None or humidite == None):
+		return -1
 
-def enregistrer_borne(temperature, humidite):
-	if (temperature > recup_borne("MAX", "max_temp")):
-		curseur_donnees.execute("""INSERT INTO meteor_donnees
-			(date_mesure, max_temp) VALUES
-			(datetime("now", "localtime"), {0})""".format(temperature))
-		bdd_donnees.commit()
-		return
+	curseur_mesures.execute("""INSERT INTO meteor_donnees
+		(date_mesure, temperature_ambiante, humidite_ambiante) VALUES
+		(datetime("now", "localtime"), {0}, {1})"""
+		.format(temperature, humidite))
+	bdd_mesures.commit()
+	return 0
 
-	elif (temperature < recup_borne("MIN", "min_temp")):
-		curseur_donnees.execute("""INSERT INTO meteor_donnees
-			(date_mesure, min_temp) VALUES
-			(datetime("now", "localtime"), {0})""".format(temperature))
-		bdd_donnees.commit()
-		return
+"""
+@brief	Enregistre la mesure minimale ou maximale de température ou
+		d'humidité, si la mesure est supérieure ou inférieure à la borne
+		enregistrée dans la base de données
+@param	mesure		Mesure à enregistrer
+@param	type_mesure	Chaîne de caractères indiquant le type de mesure
+					("temp" ou "humi")
+@return	0 si la mesure a été enregistrée, -1 en cas d'erreur de type de mesure,
+		-2 en cas de mesure nulle
+"""
+def enregistrer_borne(mesure, type_mesure):
+	if (type_mesure != "temp" and type_mesure != "humi"):
+		messageErreur("enregistrer_borne | Type de mesure inconnu")
+		return -1
 
-	elif (humidite > recup_borne("MAX", "max_humi")):
-		curseur_donnees.execute("""INSERT INTO meteor_donnees
-			(date_mesure, max_humi) VALUES
-			(datetime("now", "localtime"), {0})""".format(humidite))
-		bdd_donnees.commit()
-		return
+	elif (mesure == None):
+		return -2
 
-	elif (humidite < recup_borne("MIN", "min_humi")):
-		curseur_donnees.execute("""INSERT INTO meteor_donnees
-			(date_mesure, min_humi) VALUES
-			(datetime("now", "localtime"), {0})""".format(humidite))
-		bdd_donnees.commit()
-		return
+	elif (mesure > recup_borne("MAX", "max_{0}".format(type_mesure))):
+		curseur_mesures.execute("""INSERT INTO meteor_donnees
+			(date_mesure, max_{0}) VALUES
+			(datetime("now", "localtime"), {1})""".format(type_mesure, mesure))
+		bdd_mesures.commit()
+		return 0
 
+	elif (mesure < recup_borne("MIN", "min_{0}".format(type_mesure))):
+		curseur_mesures.execute("""INSERT INTO meteor_donnees
+			(date_mesure, min_{0}) VALUES
+			(datetime("now", "localtime"), {1})""".format(type_mesure, mesure))
+		bdd_mesures.commit()
+		return 0
+
+"""
+@brief	Récupère la moyenne des mesure de température et d'humidite de l'heure
+		précédente dans la base de données des mesures, et l'enregistre dans
+		la base de données des moyennes
+"""
 def enregistrer_moyennes():
-	# Ajout de la moyenne dans la BDD
-	curseur_donnees.execute("""SELECT AVG(temperature_ambiante),
+	# Récupère la moyenne de l'heure passée
+	curseur_mesures.execute("""SELECT AVG(temperature_ambiante),
 		AVG(humidite_ambiante) FROM meteor_donnees WHERE
 		date_mesure >= datetime("now", "localtime", "-1 hour", "1 minute")
 		AND temperature_ambiante IS NOT NULL AND
 		humidite_ambiante IS NOT NULL""")
-	moyenne_donnees = curseur_donnees.fetchall()[0]
+	moyenne_mesures = curseur_mesures.fetchall()[0]
 
-	# Vérification que les données existent (changement de fuseau été/hiver)
-	if (moyenne_donnees[0] != None and moyenne_donnees[1] != None):
-		curseur_graphs.execute("""INSERT INTO meteor_graphs
+	# Vérification que les données existent, dans le cas d'un changement de
+	# fuseau été/hiver, puis ajoute dans la base de données des moyennes
+	if (moyenne_mesures[0] != None and moyenne_mesures[1] != None):
+		curseur_moyennes.execute("""INSERT INTO meteor_graphs
 			(date_mesure, temperature_ambiante, humidite_ambiante) VALUES
 			(datetime("now", "localtime"), {0}, {1})"""
-			.format(round(moyenne_donnees[0]/1, 1),
-			round(moyenne_donnees[1]/1, 1)))
-		bdd_graphs.commit()
-		status_envoi = gestion_envoi(NOM_BDD_GRAPHS)
-	return status_envoi
+			.format(round(moyenne_mesures[0] / 1, 1),
+			round(moyenne_mesures[1] / 1, 1)))
+		bdd_moyennes.commit()
+	return 0
 
+## Gestion des sauvegardes #####################################################
+"""
+@brief	Supprimer les anciennes sauvegardes datant de plus de 31 jours
+"""
+def nettoyage_sauvegardes():
+	# Récupérez tous les fichiers du répertoire avec leur date de modification
+	fichiers = glob.glob(os.path.join(CHEMIN_SAUVEGARDE_LOCAL, '*'))
+	dates_fichiers = [(fichier, os.path.getmtime(fichier))
+		for fichier in fichiers]
+
+	# Nombre de jours en secondes
+	nombre_jours = NBR_JOURS * 24 * 60 * 60
+	date_actuelle = time.time()
+
+	# Parcours les fichiers et supprime ceux datant de plus de 31 jours
+	for nom_fichier, date_fichier in dates_fichiers:
+		if (date_actuelle - date_fichier > nombre_jours):
+			os.remove(nom_fichier)
+	return 0
+
+"""
+@brief	Créé une copie des bases de données de mesures et de moyennes dans le
+		dossier de sauvegarde local
+@return	0 si la copie s'est bien déroulée, -1 sinon
+"""
+def copie_sauvegarde_bdd():
+	try:
+		shutil.copy2("./{0}".format(NOM_BDD_MESURES), "{0}/{1}_{2}"
+			.format(CHEMIN_SAUVEGARDE_LOCAL, time.strftime("%d-%m-%Y"),
+			NOM_BDD_MESURES))
+		shutil.copy2("./{0}".format(NOM_BDD_MOYENNES), "{0}/{1}_{2}"
+			.format(CHEMIN_SAUVEGARDE_LOCAL, time.strftime("%d-%m-%Y"),
+			NOM_BDD_MOYENNES))
+		return 0
+
+	except:
+		messageErreur("Copie des bases de données de sauvegarde échouée")
+		return -1
+
+"""
+@brief	Nettoye les base de données des mesures et des moyennes.
+		Ne garde que les mesures de la journée en cours et les mesures minimales
+		et maximales de la journée précédente, pour la base de données des
+		mesures.
+		Pour la base de données des moyennes, ne garde que les 31 derniers jours
+@return	0 si le nettoyage s'est bien déroulé, -1 sinon
+"""
 def nettoyage_bdd():
-	# Sauvegarde puis nettoyage des BDD, une fois par jour, à minuit
-	# (en fonction du fuseau local français en vigueur)
-	if (
-		(localtime().tm_isdst == 1 and maintenant.hour == 22) or
-		(localtime().tm_isdst == 0 and maintenant.hour == 23)
-	):
-		try:
-			copy2("./{0}".format(NOM_BDD_DONNEES), "{0}/sauvegarde_{1}"
-				.format(CHEMIN_SAUVEGARDE_LOCAL, NOM_BDD_DONNEES))
-			copy2("./{0}".format(NOM_BDD_GRAPHS), "{0}/sauvegarde_{1}"
-				.format(CHEMIN_SAUVEGARDE_LOCAL, NOM_BDD_DONNEES))
-		except:
-			messageErreur("Copie BDD de sauvegarde échouée")
+	# Nettoyage de la base de données des mesures
+	curseur_mesures.execute("""DELETE FROM meteor_donnees WHERE
+		(max_temp NOT IN (SELECT MAX(max_temp) FROM meteor_donnees) OR
+		min_temp NOT IN (SELECT MIN(min_temp) FROM meteor_donnees) OR
+		max_humi NOT IN (SELECT MAX(max_humi) FROM meteor_donnees) OR
+		min_humi NOT IN (SELECT MIN(min_humi) FROM meteor_donnees)) OR
+		(temperature_ambiante IS NOT NULL AND
+		humidite_ambiante IS NOT NULL AND
+		date_mesure NOT IN (SELECT MAX(date_mesure)
+		FROM meteor_donnees))""")
+	bdd_mesures.commit()
 
-			# Nettoyage BDD des graphs
-		curseur_graphs.execute("""DELETE FROM meteor_graphs WHERE
-			date_mesure <= datetime("now", "localtime", "-31 days",
-			"-3 minutes")""")
-		bdd_graphs.commit()
-
-			# Nettoyage BDD des données
-		curseur_donnees.execute("""DELETE FROM meteor_donnees WHERE
-			(max_temp NOT IN (SELECT MAX(max_temp) FROM meteor_donnees) OR
-			min_temp NOT IN (SELECT MIN(min_temp) FROM meteor_donnees) OR
-			max_humi NOT IN (SELECT MAX(max_humi) FROM meteor_donnees) OR
-			min_humi NOT IN (SELECT MIN(min_humi) FROM meteor_donnees)) OR
-			(temperature_ambiante IS NOT NULL AND
-			humidite_ambiante IS NOT NULL AND
-			date_mesure NOT IN (SELECT MAX(date_mesure)
-			FROM meteor_donnees))""")
-		bdd_donnees.commit()
-	return
+	# Nettoyage de la base de données des moyennes
+	curseur_moyennes.execute("""DELETE FROM meteor_graphs WHERE
+		date_mesure <= datetime("now", "localtime", "-{0} days",
+		"-3 minutes")""".format(NBR_JOURS))
+	bdd_moyennes.commit()
+	return 0
 
 ## Affichage des mesures #######################################################
-def afficher_donnees(temperature, humidite):
+"""
+@brief	Affiche les mesures de température et d'humidité sur l'écran
+@param	temperature	Mesure de température à afficher
+@param	humidite	Mesure d'humidité à afficher
+@return	0 si l'affichage s'est bien déroulé, -1 sinon
+"""
+def afficher_mesures(temperature, humidite):
 	if (temperature == None or humidite == None):
 		return -1
 
-	dessin = ImageDraw.Draw(affichage_img)
-	dessin.rectangle((0, 0, affichage_largeur, affichage_hauteur), outline = 0,
+	dessin = pil.ImageDraw.Draw(AFFICHAGE_IMAGE)
+	dessin.rectangle((0, 0, AFFICHAGE_LARGEUR, AFFICHAGE_HAUTEUR), outline = 0,
 		fill = 0)
-	dessin.text((affichage_abscisse, affichage_haut), "Date : " +
-		str(strftime("%d %B")), font = POLICE, fill = TRANSPARENT)
-	dessin.text((affichage_abscisse, affichage_haut + 16), "Température : " +
+
+	dessin.text((AFFICHAGE_ABSCISSE, AFFICHAGE_HAUT), "Date : " +
+		str(time.strftime("%d %B")), font = POLICE, fill = TRANSPARENT)
+	dessin.text((AFFICHAGE_ABSCISSE, AFFICHAGE_HAUT + 16), "Température : " +
 		str(temperature) + "°C", font = POLICE, fill = 255)
-	dessin.text((affichage_abscisse, affichage_haut + 32), "Humidité : " +
+	dessin.text((AFFICHAGE_ABSCISSE, AFFICHAGE_HAUT + 32), "Humidité : " +
 		str(humidite) + "%", font = POLICE, fill = TRANSPARENT)
-	dessin.text((affichage_abscisse, affichage_haut + 48),
+	dessin.text((AFFICHAGE_ABSCISSE, AFFICHAGE_HAUT + 48),
 		"Dernière mise à jour : ", font = POLICE, fill = TRANSPARENT)
-	dessin.text((affichage_abscisse, affichage_haut + 56),
-		str(strftime("%H:%M")), font = POLICE, fill = TRANSPARENT)
-	affichage.image(affichage_img)
+	dessin.text((AFFICHAGE_ABSCISSE, AFFICHAGE_HAUT + 56),
+		str(time.strftime("%H:%M")), font = POLICE, fill = TRANSPARENT)
+
+	affichage.image(AFFICHAGE_IMAGE)
 	affichage.display()
-	return
+	return 0
 
 ## Programme principal #########################################################
-	# Messages d'information
-system("clear")
+# Messages d'information
+os.system("clear")
 print("{0}|Info| Mode {1}{2}".format(couleur.BLEU_CLAIR,
-	("connecté" if MODE_LOCAL == False else "local"), couleur.FIN_STYLE))
+	("connecté" if mode_local == False else "local"), couleur.FIN_STYLE))
 print("{0}|Info| Les messages d'erreur s'afficheront dans cette console{1}\n"
 	.format(couleur.BLEU_FONCE, couleur.FIN_STYLE))
 
-	# Attente de la mise en route des services réseaux de l'OS
-sleep(5)
+# Attente de la mise en route des services réseaux de l'OS
+time.sleep(5)
 
 connexion_sftp()
 while True:
 	# Calcul du temps de départ
-	temps_arrivee = datetime.utcnow() + timedelta(minutes = 3)
+	temps_arrivee = dt.datetime.utcnow() + dt.timedelta(minutes = 3)
 	temps_arrivee = temps_arrivee.replace(second = 0, microsecond = 0)
 	if (temps_arrivee.minute > 0 and temps_arrivee.minute < 3):
 		temps_arrivee = temps_arrivee.replace(minute = 0)
@@ -411,31 +515,40 @@ while True:
 	enregistrement_mesures(temperature, humidite)
 
 	# Enregistrement des bornes min et max
-	enregistrer_borne(temperature, humidite)
+	enregistrer_borne(temperature, "temp")
+	enregistrer_borne(humidite, "humi")
 
-	# Envoi de la BDD des données actuelles au serveur
-	gestion_envoi(NOM_BDD_DONNEES)
+	# Envoi de la base de données des mesures au serveur
+	gestion_envoi(NOM_BDD_MESURES)
 
-	# Renvoi la BDD des graphs si cela avait échoué précédemment
-	if (status_envoi == False and gestion_envoi(NOM_BDD_GRAPHS) == True):
+	# Renvoi la base de données des graphs si cela avait échoué précédemment
+	if (status_envoi == False and gestion_envoi(NOM_BDD_MOYENNES) == True):
 		status_envoi = True
 
 	# Calcul et enregistrement des moyennes
-	maintenant = datetime.utcnow()
+	maintenant = dt.datetime.utcnow()
 	if (maintenant.hour == temps_moyenne.hour):
 		# Calcul l'heure pour la prochaine moyenne
-		temps_moyenne = datetime.utcnow() + timedelta(hours = 1)
+		temps_moyenne = dt.datetime.utcnow() + dt.timedelta(hours = 1)
 
-		# Enregistrement de la moyenne pour température et humidité
-		status_envoi = enregistrer_moyennes()
+		# Enregistrement de la moyenne pour température et humidité, puis envoi
+		enregistrer_moyennes()
+		status_envoi = gestion_envoi(NOM_BDD_MOYENNES)
 
-		# Nettoyage des BDD une fois par jour
-		nettoyage_bdd()
+		# Nettoyage des bases de données une fois par jour
+		# Vérifie que l'heure est bien minuit dans le fuseau local français
+		if (
+			(time.localtime().tm_isdst == 1 and maintenant.hour == 22) or
+			(time.localtime().tm_isdst == 0 and maintenant.hour == 23)
+		):
+			copie_sauvegarde_bdd()
+			nettoyage_sauvegardes()
+			nettoyage_bdd()
 
 	# Affichage des informations sur l'écran
-	afficher_donnees(temperature, humidite)
+	afficher_mesures(temperature, humidite)
 
 	# Attente pour la mesure suivante
-	duree_attente = (temps_arrivee - datetime.utcnow()).total_seconds()
-	if (duree_attente >= 0):
-		sleep(duree_attente)
+	duree_attente = (temps_arrivee - dt.datetime.utcnow()).total_seconds()
+	if (duree_attente > 0):
+		time.sleep(duree_attente)

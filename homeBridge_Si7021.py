@@ -1,16 +1,16 @@
 #! /usr/bin/python3
 # Auteur : DIEBOLT Loïc
 
-from adafruit_si7021 import SI7021
-from board import I2C
-from json import dumps
-from time import sleep
-from web import application, debugerror
+import adafruit_si7021
+import board
+import json
+import time
+import web
 
 # Initialise le capteur
 while True:
 	try:
-		capteur = SI7021(I2C())
+		capteur = adafruit_si7021.SI7021(board.I2C())
 		break
 
 	except RuntimeError:
@@ -31,8 +31,8 @@ class temp:
 				break
 
 			except:
-				sleep(i)
-		return dumps(temperature)
+				time.sleep(i)
+		return json.dumps(temperature)
 
 class humi:
 	def GET(self):
@@ -43,11 +43,11 @@ class humi:
 				break
 
 			except:
-				sleep(i)
-		return dumps(humidite)
+				time.sleep(i)
+		return json.dumps(humidite)
 
 # Lance le serveur
 if __name__ == "__main__":
-	app = application(urls, globals())
-	app.internalerror = debugerror
+	app = web.application(urls, globals())
+	app.internalerror = web.debugerror
 	app.run()

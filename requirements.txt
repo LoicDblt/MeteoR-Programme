@@ -3,3 +3,4 @@ wheel
 adafruit-circuitpython-si7021
 Adafruit-SSD1306
 paramiko
+web.py
