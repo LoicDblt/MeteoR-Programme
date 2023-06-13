@@ -27,16 +27,19 @@ elif (len(sys.argv) == 5):
 	mode_local = False
 
 else:
-	print("{0}|Erreur| Usage : python3 {1} <Adresse SFTP> "
+	print(
+		"{0}|Erreur| Usage : python3 {1} <Adresse SFTP> "
 		.format(couleur.ROUGE, sys.argv[0]) +
 		"<Chemin racine sur le serveur> <Identifiant SFTP> " +
-		"<Clé SSH privée>{0}".format(couleur.FIN_STYLE))
+		"<Clé SSH privée>{0}".format(couleur.FIN_STYLE)
+	)
 	exit()
 
 # Message d'initialisation
 os.system("clear")
 print("{0}|Info| Initialisation du programme, veuillez patienter...{1}"
-	.format(couleur.BLEU_CLAIR, couleur.FIN_STYLE))
+	.format(couleur.BLEU_CLAIR, couleur.FIN_STYLE)
+)
 
 ## Import des modules ##########################################################
 import adafruit_si7021
@@ -54,12 +57,16 @@ import time
 ## Messages d'erreur ###########################################################
 """
 @brief	Affiche un message d'erreur en rouge, avec la date et l'heure
+
 @param	message	Le message d'erreur à afficher
 """
 def messageErreur(message):
-	print("{0}|Erreur - {1} à {2}| {3}{4}"
-		.format(couleur.ROUGE, time.strftime("%d/%m"), time.strftime("%H:%M"),
-		message, couleur.FIN_STYLE))
+	print("{0}|Erreur - {1} à {2}| {3}{4}".format(
+		couleur.ROUGE,
+		time.strftime("%d/%m"),
+		time.strftime("%H:%M"),
+		message, couleur.FIN_STYLE)
+	)
 	return
 
 ## Variables et initialisation #################################################
@@ -105,17 +112,21 @@ while True:
 
 	except RuntimeError:
 		if (erreur_capteur_affichee == False):
-			messageErreur("Initialisation du capteur échouée, " +
-				"correction en cours, veuillez patienter...")
+			messageErreur(
+				"Initialisation du capteur échouée, " +
+				"correction en cours, veuillez patienter..."
+			)
 			erreur_capteur_affichee = True
 
 ## Bases de données ############################################################
 # Créé la base de données des mesures, si elle n'existe pas
 bdd_mesures = sqlite3.connect(NOM_BDD_MESURES)
 curseur_mesures = bdd_mesures.cursor()
-curseur_mesures.execute("""CREATE TABLE IF NOT EXISTS meteor_donnees
+curseur_mesures.execute("""
+	CREATE TABLE IF NOT EXISTS meteor_donnees
 	(date_mesure CHAR, temperature_ambiante FLOAT, humidite_ambiante FLOAT,
-	max_temp FLOAT, min_temp FLOAT, max_humi FLOAT, min_humi FLOAT)""")
+	max_temp FLOAT, min_temp FLOAT, max_humi FLOAT, min_humi FLOAT)
+""")
 
 # Initialise les mesures min et max de température et d'humidité, si la base de
 # données est vide
@@ -123,17 +134,22 @@ curseur_mesures.execute("""SELECT MIN(max_humi) FROM meteor_donnees""")
 mesure_min = curseur_mesures.fetchall()[0][0]
 
 if (mesure_min == None):
-	curseur_mesures.execute("""INSERT INTO meteor_donnees
-		(date_mesure, max_temp, min_temp, max_humi, min_humi) VALUES
-		(datetime("now", "localtime"), 0, 100, 0, 100)""")
+	curseur_mesures.execute("""
+		INSERT INTO meteor_donnees
+		(date_mesure, max_temp, min_temp, max_humi, min_humi)
+		VALUES (datetime("now", "localtime"), 0, 100, 0, 100)
+	""")
 	bdd_mesures.commit()
 
 # Créé la base de données des moyennes, si elle n'existe pas
-bdd_moyennes = sqlite3.connect(NOM_BDD_MOYENNES, detect_types =
-	sqlite3.PARSE_COLNAMES|sqlite3.PARSE_DECLTYPES)
+bdd_moyennes = sqlite3.connect(NOM_BDD_MOYENNES,
+	detect_types = sqlite3.PARSE_COLNAMES|sqlite3.PARSE_DECLTYPES
+)
 curseur_moyennes = bdd_moyennes.cursor()
-curseur_moyennes.execute("""CREATE TABLE IF NOT EXISTS meteor_graphs
-	(date_mesure CHAR, temperature_ambiante FLOAT, humidite_ambiante FLOAT)""")
+curseur_moyennes.execute("""
+	CREATE TABLE IF NOT EXISTS meteor_graphs
+	(date_mesure CHAR, temperature_ambiante FLOAT, humidite_ambiante FLOAT)
+""")
 bdd_moyennes.commit()
 
 ## Paramétrage de l'écran ######################################################
@@ -176,24 +192,31 @@ def connexion_sftp():
 		erreur_sftp = False
 		if (erreur_sftp_affichee == True):
 			erreur_sftp_affichee = False
-			print("{0}|Info - {1} à {2}| Connexion par SFTP rétablie{3}"
-				.format(couleur.VERT, time.strftime("%d/%m "),
-				time.strftime("%H:%M"), couleur.FIN_STYLE))
+			print("{0}|Info - {1} à {2}| Connexion par SFTP rétablie{3}".format(
+				couleur.VERT,
+				time.strftime("%d/%m "),
+				time.strftime("%H:%M"),
+				couleur.FIN_STYLE)
+			)
 		return 0
 
 	except paramiko.AuthenticationException:
 		if (erreur_sftp_affichee == False):
 			erreur_sftp_affichee = True
-			messageErreur("Identifiant ou mauvaise clé SSH fournie.\n" +
+			messageErreur(
+				"Identifiant ou mauvaise clé SSH fournie.\n" +
 				"Une nouvelle tentative sera effectuée après chaque " +
 				"nouvelle mesure.\nVeuillez relancer le programme si " +
-				"vous souhaitez modifier les identifiants.")
+				"vous souhaitez modifier les identifiants."
+			)
 		erreur_sftp = True
 		return -1
 
 	except paramiko.ssh_exception.SSHException:
-			messageErreur("Format de clé SSH non reconnu (chiffrement " +
-				"Ed25519 attendu), passage en mode local")
+			messageErreur(
+				"Format de clé SSH non reconnu (chiffrement Ed25519 attendu)" +
+				", passage en mode local"
+			)
 			mode_local = True
 			return -2
 
@@ -221,7 +244,9 @@ def deconnexion_sftp():
 ## Envoi de fichiers par SFTP ##################################################
 """
 @brief	Envoi la base de données SQLite au serveur
+
 @param	nom_fichier	Le nom du fichier à envoyer
+
 @return	0 si l'envoi s'est bien déroulé, -1 si le dossier n'existe pas sur le
 		serveur, -2 si la connexion a échoué
 """
@@ -245,7 +270,9 @@ def envoi_fichier(nom_fichier):
 """
 @brief	Gère l'envoi de la base de données SQLite au serveur.
 		En cas, d'erreur de connexion, plusieurs tentatives seront effectuées.
+
 @param	nom_fichier	Le nom du fichier à envoyer
+
 @return	0 si l'envoi a réussi, -1 en cas d'erreur
 """
 def gestion_envoi(nom_fichier):
@@ -266,8 +293,10 @@ def gestion_envoi(nom_fichier):
 ## Récupération des mesures ####################################################
 """
 @brief	Récupère la mesure de température ou d'humidité
+
 @param	type_mesure	Chaîne de caractères indiquant le type de mesure
 		("temperature" ou "humidite")
+
 @return	La mesure récupérée, ou None en cas d'erreur
 """
 def recup_mesure(type_mesure):
@@ -275,7 +304,7 @@ def recup_mesure(type_mesure):
 		messageErreur("recup_mesure | Type de mesure inconnu")
 		return None
 
-	# Récupération de la mesure (arrondies à 0.1)
+	# Récupération de la mesure (arrondie à 0.1)
 	for _ in range(4):
 		try:
 			if (type_mesure == "temperature"):
@@ -292,10 +321,12 @@ def recup_mesure(type_mesure):
 
 """
 @brief	Récupère la mesure minimale ou maximale de température ou d'humidité
+
 @param	type_operation	Chaîne de caractères indiquant le type d'opération
 						("MIN" ou "MAX")
 @param	type_mesure		Chaîne de caractères indiquant le type de mesure
 						("temperature" ou "humidite")
+
 @return	La mesure récupérée, -1 en cas d'erreur de type d'opération, ou -2 en
 		cas d'erreur de type de mesure
 """
@@ -311,26 +342,30 @@ def recup_borne(type_operation, type_mesure):
 		messageErreur("recup_borne | Type de mesure inconnu")
 		return -2
 
-	curseur_mesures.execute("""SELECT {0}({1}) FROM meteor_donnees"""
-		.format(type_operation, type_mesure))
+	curseur_mesures.execute("""
+		SELECT {0}({1}) FROM meteor_donnees
+	""".format(type_operation, type_mesure))
 	return curseur_mesures.fetchall()[0][0]
 
 ## Enregistrement des mesures ##################################################
 """
 @brief	Enregistre la mesure de température et d'humidité dans la base de
 		données
+
 @param	temperature	Mesure de température à enregistrer
 @param	humidite	Mesure d'humidité à enregistrer
+
 @return	0 si les mesures ont été enregistrées, -1 en cas d'erreur
 """
 def enregistrement_mesures(temperature, humidite):
 	if (temperature == None or humidite == None):
 		return -1
 
-	curseur_mesures.execute("""INSERT INTO meteor_donnees
-		(date_mesure, temperature_ambiante, humidite_ambiante) VALUES
-		(datetime("now", "localtime"), {0}, {1})"""
-		.format(temperature, humidite))
+	curseur_mesures.execute("""
+		INSERT INTO meteor_donnees
+		(date_mesure, temperature_ambiante, humidite_ambiante)
+		VALUES (datetime("now", "localtime"), {0}, {1})
+	""".format(temperature, humidite))
 	bdd_mesures.commit()
 	return 0
 
@@ -338,9 +373,11 @@ def enregistrement_mesures(temperature, humidite):
 @brief	Enregistre la mesure minimale ou maximale de température ou
 		d'humidité, si la mesure est supérieure ou inférieure à la borne
 		enregistrée dans la base de données
+
 @param	mesure		Mesure à enregistrer
 @param	type_mesure	Chaîne de caractères indiquant le type de mesure
 					("temp" ou "humi")
+
 @return	0 si la mesure a été enregistrée, -1 en cas d'erreur de type de mesure,
 		-2 en cas de mesure nulle
 """
@@ -353,16 +390,20 @@ def enregistrer_borne(mesure, type_mesure):
 		return -2
 
 	elif (mesure > recup_borne("MAX", "max_{0}".format(type_mesure))):
-		curseur_mesures.execute("""INSERT INTO meteor_donnees
-			(date_mesure, max_{0}) VALUES
-			(datetime("now", "localtime"), {1})""".format(type_mesure, mesure))
+		curseur_mesures.execute("""
+			INSERT INTO meteor_donnees
+			(date_mesure, max_{0})
+			VALUES (datetime("now", "localtime"), {1})
+		""".format(type_mesure, mesure))
 		bdd_mesures.commit()
 		return 0
 
 	elif (mesure < recup_borne("MIN", "min_{0}".format(type_mesure))):
-		curseur_mesures.execute("""INSERT INTO meteor_donnees
-			(date_mesure, min_{0}) VALUES
-			(datetime("now", "localtime"), {1})""".format(type_mesure, mesure))
+		curseur_mesures.execute("""
+			INSERT INTO meteor_donnees
+			(date_mesure, min_{0})
+			VALUES (datetime("now", "localtime"), {1})
+		""".format(type_mesure, mesure))
 		bdd_mesures.commit()
 		return 0
 
@@ -373,21 +414,25 @@ def enregistrer_borne(mesure, type_mesure):
 """
 def enregistrer_moyennes():
 	# Récupère la moyenne de l'heure passée
-	curseur_mesures.execute("""SELECT AVG(temperature_ambiante),
-		AVG(humidite_ambiante) FROM meteor_donnees WHERE
-		date_mesure >= datetime("now", "localtime", "-1 hour", "1 minute")
-		AND temperature_ambiante IS NOT NULL AND
-		humidite_ambiante IS NOT NULL""")
+	curseur_mesures.execute("""
+		SELECT AVG(temperature_ambiante), AVG(humidite_ambiante)
+		FROM meteor_donnees
+		WHERE date_mesure >= datetime("now", "localtime", "-1 hour", "1 minute")
+		AND temperature_ambiante IS NOT NULL
+		AND humidite_ambiante IS NOT NULL
+	""")
 	moyenne_mesures = curseur_mesures.fetchall()[0]
+	temperature = moyenne_mesures[0]
+	humidite = moyenne_mesures[1]
 
 	# Vérification que les données existent, dans le cas d'un changement de
 	# fuseau été/hiver, puis ajoute dans la base de données des moyennes
-	if (moyenne_mesures[0] != None and moyenne_mesures[1] != None):
-		curseur_moyennes.execute("""INSERT INTO meteor_graphs
-			(date_mesure, temperature_ambiante, humidite_ambiante) VALUES
-			(datetime("now", "localtime"), {0}, {1})"""
-			.format(round(moyenne_mesures[0] / 1, 1),
-			round(moyenne_mesures[1] / 1, 1)))
+	if (temperature != None and humidite != None):
+		curseur_moyennes.execute("""
+			INSERT INTO meteor_graphs
+			(date_mesure, temperature_ambiante, humidite_ambiante)
+			VALUES (datetime("now", "localtime"), {0}, {1})
+		""".format(round(temperature / 1, 1), round(humidite / 1, 1)))
 		bdd_moyennes.commit()
 	return 0
 
@@ -398,8 +443,10 @@ def enregistrer_moyennes():
 def nettoyage_sauvegardes():
 	# Récupérez tous les fichiers du répertoire avec leur date de modification
 	fichiers = glob.glob(os.path.join(CHEMIN_SAUVEGARDE_LOCAL, '*'))
-	dates_fichiers = [(fichier, os.path.getmtime(fichier))
-		for fichier in fichiers]
+	dates_fichiers = [
+		(fichier, os.path.getmtime(fichier))
+		for fichier in fichiers
+	]
 
 	# Nombre de jours en secondes
 	nombre_jours = NBR_JOURS * 24 * 60 * 60
@@ -407,7 +454,7 @@ def nettoyage_sauvegardes():
 
 	# Parcours les fichiers et supprime ceux datant de plus de 31 jours
 	for nom_fichier, date_fichier in dates_fichiers:
-		if (date_actuelle - date_fichier > nombre_jours):
+		if ((date_actuelle - date_fichier) > nombre_jours):
 			os.remove(nom_fichier)
 	return 0
 
@@ -418,12 +465,16 @@ def nettoyage_sauvegardes():
 """
 def copie_sauvegarde_bdd():
 	try:
-		shutil.copy2("./{0}".format(NOM_BDD_MESURES), "{0}/{1}_{2}"
-			.format(CHEMIN_SAUVEGARDE_LOCAL, time.strftime("%d-%m-%Y"),
-			NOM_BDD_MESURES))
-		shutil.copy2("./{0}".format(NOM_BDD_MOYENNES), "{0}/{1}_{2}"
-			.format(CHEMIN_SAUVEGARDE_LOCAL, time.strftime("%d-%m-%Y"),
-			NOM_BDD_MOYENNES))
+		shutil.copy2("./{0}".format(NOM_BDD_MESURES), "{0}/{1}_{2}".format(
+			CHEMIN_SAUVEGARDE_LOCAL,
+			time.strftime("%d-%m-%Y"),
+			NOM_BDD_MESURES
+		))
+		shutil.copy2("./{0}".format(NOM_BDD_MOYENNES), "{0}/{1}_{2}".format(
+			CHEMIN_SAUVEGARDE_LOCAL,
+			time.strftime("%d-%m-%Y"),
+			NOM_BDD_MOYENNES
+		))
 		return 0
 
 	except:
@@ -440,29 +491,41 @@ def copie_sauvegarde_bdd():
 """
 def nettoyage_bdd():
 	# Nettoyage de la base de données des mesures
-	curseur_mesures.execute("""DELETE FROM meteor_donnees WHERE
-		(max_temp NOT IN (SELECT MAX(max_temp) FROM meteor_donnees) OR
-		min_temp NOT IN (SELECT MIN(min_temp) FROM meteor_donnees) OR
-		max_humi NOT IN (SELECT MAX(max_humi) FROM meteor_donnees) OR
-		min_humi NOT IN (SELECT MIN(min_humi) FROM meteor_donnees)) OR
-		(temperature_ambiante IS NOT NULL AND
-		humidite_ambiante IS NOT NULL AND
-		date_mesure NOT IN (SELECT MAX(date_mesure)
-		FROM meteor_donnees))""")
+	curseur_mesures.execute("""
+		DELETE FROM meteor_donnees
+		WHERE (max_temp, min_temp, max_humi, min_humi) NOT IN (
+			SELECT MAX(max_temp), MIN(min_temp), MAX(max_humi), MIN(min_humi)
+			FROM meteor_donnees
+		)
+		OR (
+			temperature_ambiante IS NOT NULL
+			AND humidite_ambiante IS NOT NULL
+			AND date_mesure NOT IN (
+				SELECT MAX(date_mesure)
+				FROM meteor_donnees
+			)
+		)
+	""")
 	bdd_mesures.commit()
 
 	# Nettoyage de la base de données des moyennes
-	curseur_moyennes.execute("""DELETE FROM meteor_graphs WHERE
-		date_mesure <= datetime("now", "localtime", "-{0} days",
-		"-3 minutes")""".format(NBR_JOURS))
+	curseur_moyennes.execute("""
+		DELETE FROM meteor_graphs
+		WHERE (
+			date_mesure <=
+			datetime("now", "localtime", "-{0} days", "-3 minutes")
+		)
+	""".format(NBR_JOURS))
 	bdd_moyennes.commit()
 	return 0
 
 ## Affichage des mesures #######################################################
 """
 @brief	Affiche les mesures de température et d'humidité sur l'écran
+
 @param	temperature	Mesure de température à afficher
 @param	humidite	Mesure d'humidité à afficher
+
 @return	0 si l'affichage s'est bien déroulé, -1 sinon
 """
 def afficher_mesures(temperature, humidite):
@@ -470,19 +533,36 @@ def afficher_mesures(temperature, humidite):
 		return -1
 
 	dessin = pil.ImageDraw.Draw(AFFICHAGE_IMAGE)
-	dessin.rectangle((0, 0, AFFICHAGE_LARGEUR, AFFICHAGE_HAUTEUR), outline = 0,
-		fill = 0)
+	dessin.rectangle(
+		(0, 0, AFFICHAGE_LARGEUR, AFFICHAGE_HAUTEUR),
+		outline = 0, fill = 0
+	)
 
-	dessin.text((AFFICHAGE_ABSCISSE, AFFICHAGE_HAUT), "Date : " +
-		str(time.strftime("%d %B")), font = POLICE, fill = TRANSPARENT)
-	dessin.text((AFFICHAGE_ABSCISSE, AFFICHAGE_HAUT + 16), "Température : " +
-		str(temperature) + "°C", font = POLICE, fill = 255)
-	dessin.text((AFFICHAGE_ABSCISSE, AFFICHAGE_HAUT + 32), "Humidité : " +
-		str(humidite) + "%", font = POLICE, fill = TRANSPARENT)
-	dessin.text((AFFICHAGE_ABSCISSE, AFFICHAGE_HAUT + 48),
-		"Dernière mise à jour : ", font = POLICE, fill = TRANSPARENT)
-	dessin.text((AFFICHAGE_ABSCISSE, AFFICHAGE_HAUT + 56),
-		str(time.strftime("%H:%M")), font = POLICE, fill = TRANSPARENT)
+	dessin.text(
+		(AFFICHAGE_ABSCISSE, AFFICHAGE_HAUT),
+		"Date : " + str(time.strftime("%d %B")),
+		font = POLICE, fill = TRANSPARENT
+	)
+	dessin.text(
+		(AFFICHAGE_ABSCISSE, AFFICHAGE_HAUT + 16),
+		"Température : " + str(temperature) + "°C",
+		font = POLICE, fill = 255
+	)
+	dessin.text(
+		(AFFICHAGE_ABSCISSE, AFFICHAGE_HAUT + 32),
+		"Humidité : " + str(humidite) + "%",
+		font = POLICE, fill = TRANSPARENT
+	)
+	dessin.text(
+		(AFFICHAGE_ABSCISSE, AFFICHAGE_HAUT + 48),
+		"Dernière mise à jour : ",
+		font = POLICE, fill = TRANSPARENT
+	)
+	dessin.text(
+		(AFFICHAGE_ABSCISSE, AFFICHAGE_HAUT + 56),
+		str(time.strftime("%H:%M")),
+		font = POLICE, fill = TRANSPARENT
+	)
 
 	affichage.image(AFFICHAGE_IMAGE)
 	affichage.display()
@@ -491,10 +571,16 @@ def afficher_mesures(temperature, humidite):
 ## Programme principal #########################################################
 # Messages d'information
 os.system("clear")
-print("{0}|Info| Mode {1}{2}".format(couleur.BLEU_CLAIR,
-	("connecté" if mode_local == False else "local"), couleur.FIN_STYLE))
+
+print("{0}|Info| Mode {1}{2}".format(
+	couleur.BLEU_CLAIR,
+	("connecté" if mode_local == False else "local"),
+	couleur.FIN_STYLE
+))
+
 print("{0}|Info| Les messages d'erreur s'afficheront dans cette console{1}\n"
-	.format(couleur.BLEU_FONCE, couleur.FIN_STYLE))
+	.format(couleur.BLEU_FONCE, couleur.FIN_STYLE)
+)
 
 # Attente de la mise en route des services réseaux de l'OS
 time.sleep(5)
