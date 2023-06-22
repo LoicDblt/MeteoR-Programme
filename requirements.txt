@@ -1,6 +1,5 @@
-setuptools
-wheel
-adafruit-circuitpython-si7021
 Adafruit-SSD1306
+adafruit-circuitpython-si7021
 paramiko
+Pillow
 web.py
