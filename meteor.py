@@ -49,7 +49,7 @@ import datetime as dt
 import glob
 import locale
 import paramiko
-import PIL as pil
+from PIL import Image, ImageDraw, ImageFont
 import shutil
 import sqlite3
 import time
@@ -161,8 +161,8 @@ AFFICHAGE_LARGEUR = affichage.width
 AFFICHAGE_HAUTEUR = affichage.height
 AFFICHAGE_HAUT = -2
 AFFICHAGE_ABSCISSE = 0
-AFFICHAGE_IMAGE = pil.Image.new('1', (AFFICHAGE_LARGEUR, AFFICHAGE_HAUTEUR))
-POLICE = pil.ImageFont.load_default()
+AFFICHAGE_IMAGE = Image.new('1', (AFFICHAGE_LARGEUR, AFFICHAGE_HAUTEUR))
+POLICE = ImageFont.load_default()
 TRANSPARENT = 255
 
 ## Connexion par SFTP ##########################################################
@@ -304,7 +304,8 @@ def recup_mesure(type_mesure):
 		messageErreur("recup_mesure | Type de mesure inconnu")
 		return None
 
-	# Récupération de la mesure (arrondie à 0.1)
+	# Récupération de la mesure (arrondie à une décmiale près)
+	mesure = None
 	for _ in range(4):
 		try:
 			if (type_mesure == "temperature"):
@@ -315,7 +316,6 @@ def recup_mesure(type_mesure):
 			break
 
 		except:
-			mesure = None
 			time.sleep(0.1)
 	return mesure
 
@@ -532,7 +532,7 @@ def afficher_mesures(temperature, humidite):
 	if (temperature == None or humidite == None):
 		return -1
 
-	dessin = pil.ImageDraw.Draw(AFFICHAGE_IMAGE)
+	dessin = ImageDraw.Draw(AFFICHAGE_IMAGE)
 	dessin.rectangle(
 		(0, 0, AFFICHAGE_LARGEUR, AFFICHAGE_HAUTEUR),
 		outline = 0, fill = 0
