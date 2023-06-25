@@ -6,6 +6,9 @@
 ################################################################################
 
 ## Initialisation ##############################################################
+import os
+import sys
+
 # Couleurs pour les messages affichés à l'utilisateur
 class couleur:
 	BLEU_CLAIR = "\033[36m"
@@ -14,9 +17,6 @@ class couleur:
 	ROUGE = "\033[91m"
 	VERT = "\033[32m"
 	FIN_STYLE = "\033[0m"
-
-import os
-import sys
 
 # Vérifie le nombre d'arguments et sélectionne le mode de fonctionnement
 # (local ou connecté)
@@ -71,13 +71,19 @@ def messageErreur(message):
 
 ## Variables et initialisation #################################################
 # Chemins et noms des bases de données
-CHEMIN_SAUVEGARDE_LOCAL = "./sauvegardes"
+CHEMIN_SAUVEGARDE = "./sauvegardes/"
+CHEMIN_BDD = "./bdd/"
 NOM_BDD_MESURES = "donnees.db"
-NOM_BDD_MOYENNES = "graphs.db"
+NOM_BDD_MOYENNES = "moyennes.db"
+CHEMIN_BDD_MESURES = CHEMIN_BDD + NOM_BDD_MESURES
+CHEMIN_BDD_MOYENNES = CHEMIN_BDD + NOM_BDD_MOYENNES
 
-# Créé le dossier de sauvegarde local s'il n'existe pas
-if (os.path.isdir(CHEMIN_SAUVEGARDE_LOCAL) == False):
-	os.mkdir(CHEMIN_SAUVEGARDE_LOCAL)
+# Créé les dossiers de sauvegarde et de stockage des BDD s'ils n'existent pas
+if (os.path.isdir(CHEMIN_SAUVEGARDE) == False):
+	os.mkdir(CHEMIN_SAUVEGARDE)
+
+if (os.path.isdir(CHEMIN_BDD) == False):
+	os.mkdir(CHEMIN_BDD)
 
 # Formatage de la date et de l'heure
 locale.setlocale(locale.LC_ALL, "")
@@ -120,7 +126,7 @@ while True:
 
 ## Bases de données ############################################################
 # Créé la base de données des mesures, si elle n'existe pas
-bdd_mesures = sqlite3.connect(NOM_BDD_MESURES)
+bdd_mesures = sqlite3.connect(CHEMIN_BDD_MESURES)
 curseur_mesures = bdd_mesures.cursor()
 curseur_mesures.execute("""
 	CREATE TABLE IF NOT EXISTS meteor_donnees
@@ -142,12 +148,12 @@ if (mesure_min == None):
 	bdd_mesures.commit()
 
 # Créé la base de données des moyennes, si elle n'existe pas
-bdd_moyennes = sqlite3.connect(NOM_BDD_MOYENNES,
+bdd_moyennes = sqlite3.connect(CHEMIN_BDD_MESURES,
 	detect_types = sqlite3.PARSE_COLNAMES|sqlite3.PARSE_DECLTYPES
 )
 curseur_moyennes = bdd_moyennes.cursor()
 curseur_moyennes.execute("""
-	CREATE TABLE IF NOT EXISTS meteor_graphs
+	CREATE TABLE IF NOT EXISTS meteor_moyennes
 	(date_mesure CHAR, temperature_ambiante FLOAT, humidite_ambiante FLOAT)
 """)
 bdd_moyennes.commit()
@@ -250,15 +256,15 @@ def deconnexion_sftp():
 @return	0 si l'envoi s'est bien déroulé, -1 si le dossier n'existe pas sur le
 		serveur, -2 si la connexion a échoué
 """
-def envoi_fichier(nom_fichier):
+def envoi_bdd(nom_fichier):
 	chemin = "{0}/bdd/{1}".format(CHEMIN_DOSSIER_WEB_SERVEUR, nom_fichier)
 	try:
-		sftp.put(nom_fichier, chemin)
+		sftp.put(CHEMIN_BDD + nom_fichier, chemin)
 		return 0
 
 	except IOError:
 		sftp.mkdir("{0}/bdd".format(CHEMIN_DOSSIER_WEB_SERVEUR))
-		sftp.put(nom_fichier, chemin)
+		sftp.put(CHEMIN_BDD + nom_fichier, chemin)
 		return -1
 
 	except:
@@ -275,19 +281,21 @@ def envoi_fichier(nom_fichier):
 
 @return	0 si l'envoi a réussi, -1 en cas d'erreur
 """
-def gestion_envoi(nom_fichier):
+def gestion_envoi_bdd(nom_fichier):
 	if (mode_local == True):
 		return
 
 	if (erreur_sftp == False):
 		for nbr_essais in range(1, 3):
 			try:
-				envoi_fichier(nom_fichier)
+				envoi_bdd(nom_fichier)
 				return 0
 
 			except:
 				time.sleep(5 * nbr_essais)
-		messageErreur("L'envoi du fichier {0} a échoué".format(nom_fichier))
+		messageErreur("L'envoi du fichier {0} a échoué".format(
+			CHEMIN_BDD + nom_fichier
+		))
 		return -1
 
 ## Récupération des mesures ####################################################
@@ -429,7 +437,7 @@ def enregistrer_moyennes():
 	# fuseau été/hiver, puis ajoute dans la base de données des moyennes
 	if (temperature != None and humidite != None):
 		curseur_moyennes.execute("""
-			INSERT INTO meteor_graphs
+			INSERT INTO meteor_moyennes
 			(date_mesure, temperature_ambiante, humidite_ambiante)
 			VALUES (datetime("now", "localtime"), {0}, {1})
 		""".format(round(temperature / 1, 1), round(humidite / 1, 1)))
@@ -442,7 +450,7 @@ def enregistrer_moyennes():
 """
 def nettoyage_sauvegardes():
 	# Récupérez tous les fichiers du répertoire avec leur date de modification
-	fichiers = glob.glob(os.path.join(CHEMIN_SAUVEGARDE_LOCAL, '*'))
+	fichiers = glob.glob(os.path.join(CHEMIN_SAUVEGARDE, '*'))
 	dates_fichiers = [
 		(fichier, os.path.getmtime(fichier))
 		for fichier in fichiers
@@ -460,18 +468,18 @@ def nettoyage_sauvegardes():
 
 """
 @brief	Créé une copie des bases de données de mesures et de moyennes dans le
-		dossier de sauvegarde local
+		dossier de sauvegarde
 @return	0 si la copie s'est bien déroulée, -1 sinon
 """
 def copie_sauvegarde_bdd():
 	try:
-		shutil.copy2("./{0}".format(NOM_BDD_MESURES), "{0}/{1}_{2}".format(
-			CHEMIN_SAUVEGARDE_LOCAL,
+		shutil.copy2("{0}".format(CHEMIN_BDD_MESURES), "{0}{1}_{2}".format(
+			CHEMIN_SAUVEGARDE,
 			time.strftime("%d-%m-%Y"),
 			NOM_BDD_MESURES
 		))
-		shutil.copy2("./{0}".format(NOM_BDD_MOYENNES), "{0}/{1}_{2}".format(
-			CHEMIN_SAUVEGARDE_LOCAL,
+		shutil.copy2("{0}".format(CHEMIN_BDD_MOYENNES), "{0}{1}_{2}".format(
+			CHEMIN_SAUVEGARDE,
 			time.strftime("%d-%m-%Y"),
 			NOM_BDD_MOYENNES
 		))
@@ -510,7 +518,7 @@ def nettoyage_bdd():
 
 	# Nettoyage de la base de données des moyennes
 	curseur_moyennes.execute("""
-		DELETE FROM meteor_graphs
+		DELETE FROM meteor_moyennes
 		WHERE (
 			date_mesure <=
 			datetime("now", "localtime", "-{0} days", "-3 minutes")
@@ -605,10 +613,10 @@ while True:
 	enregistrer_borne(humidite, "humi")
 
 	# Envoi de la base de données des mesures au serveur
-	gestion_envoi(NOM_BDD_MESURES)
+	gestion_envoi_bdd(NOM_BDD_MESURES)
 
-	# Renvoi la base de données des graphs si cela avait échoué précédemment
-	if (status_envoi == False and gestion_envoi(NOM_BDD_MOYENNES) == True):
+	# Renvoi la base de données des moyennes si cela avait échoué précédemment
+	if (status_envoi == False and gestion_envoi_bdd(NOM_BDD_MOYENNES) == True):
 		status_envoi = True
 
 	# Calcul et enregistrement des moyennes
@@ -619,7 +627,7 @@ while True:
 
 		# Enregistrement de la moyenne pour température et humidité, puis envoi
 		enregistrer_moyennes()
-		status_envoi = gestion_envoi(NOM_BDD_MOYENNES)
+		status_envoi = gestion_envoi_bdd(NOM_BDD_MOYENNES)
 
 		# Nettoyage des bases de données une fois par jour
 		# Vérifie que l'heure est bien minuit dans le fuseau local français

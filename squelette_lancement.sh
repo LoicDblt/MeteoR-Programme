@@ -2,7 +2,7 @@
 # Auteur : DIEBOLT Loïc
 
 # Usage : python3 meteor.py <Adresse SFTP> <Chemin racine sur le serveur>
-#			 <Identifiant SFTP> <Clé SSH privée>
+#		  <Identifiant SFTP> <Clé SSH privée>
 screen -dmS meteor
 screen -S meteor -p 0 -X stuff "cd /dossier/local/emplacement/programme && \
 python3 meteor.py \
