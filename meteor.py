@@ -13,7 +13,6 @@ import sys
 class couleur:
 	BLEU_CLAIR = "\033[36m"
 	BLEU_FONCE = "\033[94m"
-	JAUNE = "\033[93m"
 	ROUGE = "\033[91m"
 	VERT = "\033[32m"
 	FIN_STYLE = "\033[0m"
@@ -28,17 +27,17 @@ elif (len(sys.argv) == 5):
 
 else:
 	print(
-		"{0}|Erreur| Usage : python3 {1} <Adresse SFTP> "
-		.format(couleur.ROUGE, sys.argv[0]) +
+		f"{couleur.ROUGE}|Erreur| Usage : python3 {sys.argv[0]} <Adresse SFTP> "
 		"<Chemin racine sur le serveur> <Identifiant SFTP> " +
-		"<Clé SSH privée>{0}".format(couleur.FIN_STYLE)
+		f"<Clé SSH privée>{couleur.FIN_STYLE}"
 	)
 	exit()
 
 # Message d'initialisation
 os.system("clear")
-print("{0}|Info| Initialisation du programme, veuillez patienter...{1}"
-	.format(couleur.BLEU_CLAIR, couleur.FIN_STYLE)
+print(
+	f"{couleur.BLEU_CLAIR}|Info| Initialisation du programme, veuillez " +
+	f"patienter...{couleur.FIN_STYLE}"
 )
 
 ## Import des modules ##########################################################
@@ -61,11 +60,9 @@ import time
 @param	message	Le message d'erreur à afficher
 """
 def messageErreur(message):
-	print("{0}|Erreur - {1} à {2}| {3}{4}".format(
-		couleur.ROUGE,
-		time.strftime("%d/%m"),
-		time.strftime("%H:%M"),
-		message, couleur.FIN_STYLE)
+	print(
+		f"{couleur.ROUGE}|Erreur - {time.strftime('%d/%m')} à " +
+		f"{time.strftime('%H:%M')}| {message}{couleur.FIN_STYLE}"
 	)
 	return
 
@@ -95,8 +92,9 @@ erreur_sftp_affichee = False
 
 # Gestion du temps
 erreur_sftp = False
-temps_moyenne = dt.datetime.utcnow() + dt.timedelta(hours = 1)
-NBR_JOURS = 31
+heure_moyenne = dt.datetime.utcnow() + dt.timedelta(hours = 1)
+NBR_JOURS_MOIS = 31
+MOIS_SECONDES = NBR_JOURS_MOIS * 24 * 60 * 60
 
 # Mesures de température et d'humidité
 temperature = 0
@@ -148,7 +146,7 @@ if (mesure_min == None):
 	bdd_mesures.commit()
 
 # Créé la base de données des moyennes, si elle n'existe pas
-bdd_moyennes = sqlite3.connect(CHEMIN_BDD_MESURES,
+bdd_moyennes = sqlite3.connect(CHEMIN_BDD_MOYENNES,
 	detect_types = sqlite3.PARSE_COLNAMES|sqlite3.PARSE_DECLTYPES
 )
 curseur_moyennes = bdd_moyennes.cursor()
@@ -198,11 +196,10 @@ def connexion_sftp():
 		erreur_sftp = False
 		if (erreur_sftp_affichee == True):
 			erreur_sftp_affichee = False
-			print("{0}|Info - {1} à {2}| Connexion par SFTP rétablie{3}".format(
-				couleur.VERT,
-				time.strftime("%d/%m "),
-				time.strftime("%H:%M"),
-				couleur.FIN_STYLE)
+			print(
+				f"{couleur.VERT}|Info - {time.strftime('%d/%m ')} à " +
+				f"{time.strftime('%H:%M')}| Connexion par SFTP rétablie" +
+				f"{couleur.FIN_STYLE}"
 			)
 		return 0
 
@@ -257,13 +254,13 @@ def deconnexion_sftp():
 		serveur, -2 si la connexion a échoué
 """
 def envoi_bdd(nom_fichier):
-	chemin = "{0}/bdd/{1}".format(CHEMIN_DOSSIER_WEB_SERVEUR, nom_fichier)
+	chemin = f"{CHEMIN_DOSSIER_WEB_SERVEUR}/bdd/{nom_fichier}"
 	try:
 		sftp.put(CHEMIN_BDD + nom_fichier, chemin)
 		return 0
 
 	except IOError:
-		sftp.mkdir("{0}/bdd".format(CHEMIN_DOSSIER_WEB_SERVEUR))
+		sftp.mkdir(f"{CHEMIN_DOSSIER_WEB_SERVEUR}/bdd")
 		sftp.put(CHEMIN_BDD + nom_fichier, chemin)
 		return -1
 
@@ -293,9 +290,7 @@ def gestion_envoi_bdd(nom_fichier):
 
 			except:
 				time.sleep(5 * nbr_essais)
-		messageErreur("L'envoi du fichier {0} a échoué".format(
-			CHEMIN_BDD + nom_fichier
-		))
+		messageErreur(f"L'envoi du fichier {CHEMIN_BDD + nom_fichier} a échoué")
 		return -1
 
 ## Récupération des mesures ####################################################
@@ -350,9 +345,10 @@ def recup_borne(type_operation, type_mesure):
 		messageErreur("recup_borne | Type de mesure inconnu")
 		return -2
 
-	curseur_mesures.execute("""
-		SELECT {0}({1}) FROM meteor_donnees
-	""".format(type_operation, type_mesure))
+	curseur_mesures.execute(f"""
+		SELECT {type_operation}({type_mesure})
+		FROM meteor_donnees
+	""")
 	return curseur_mesures.fetchall()[0][0]
 
 ## Enregistrement des mesures ##################################################
@@ -369,11 +365,11 @@ def enregistrement_mesures(temperature, humidite):
 	if (temperature == None or humidite == None):
 		return -1
 
-	curseur_mesures.execute("""
+	curseur_mesures.execute(f"""
 		INSERT INTO meteor_donnees
 		(date_mesure, temperature_ambiante, humidite_ambiante)
-		VALUES (datetime("now", "localtime"), {0}, {1})
-	""".format(temperature, humidite))
+		VALUES (datetime("now", "localtime"), ?, ?)
+	""", (temperature, humidite))
 	bdd_mesures.commit()
 	return 0
 
@@ -397,21 +393,21 @@ def enregistrer_borne(mesure, type_mesure):
 	elif (mesure == None):
 		return -2
 
-	elif (mesure > recup_borne("MAX", "max_{0}".format(type_mesure))):
-		curseur_mesures.execute("""
+	elif (mesure > recup_borne("MAX", f"max_{type_mesure}")):
+		curseur_mesures.execute(f"""
 			INSERT INTO meteor_donnees
-			(date_mesure, max_{0})
-			VALUES (datetime("now", "localtime"), {1})
-		""".format(type_mesure, mesure))
+			(date_mesure, max_{type_mesure})
+			VALUES (datetime("now", "localtime"), ?)
+		""", (mesure,))
 		bdd_mesures.commit()
 		return 0
 
-	elif (mesure < recup_borne("MIN", "min_{0}".format(type_mesure))):
-		curseur_mesures.execute("""
+	elif (mesure < recup_borne("MIN", f"min_{type_mesure}")):
+		curseur_mesures.execute(f"""
 			INSERT INTO meteor_donnees
-			(date_mesure, min_{0})
-			VALUES (datetime("now", "localtime"), {1})
-		""".format(type_mesure, mesure))
+			(date_mesure, min_{type_mesure})
+			VALUES (datetime("now", "localtime"), ?)
+		""", (mesure,))
 		bdd_mesures.commit()
 		return 0
 
@@ -436,11 +432,15 @@ def enregistrer_moyennes():
 	# Vérification que les données existent, dans le cas d'un changement de
 	# fuseau été/hiver, puis ajoute dans la base de données des moyennes
 	if (temperature != None and humidite != None):
-		curseur_moyennes.execute("""
+		curseur_moyennes.execute(f"""
 			INSERT INTO meteor_moyennes
 			(date_mesure, temperature_ambiante, humidite_ambiante)
-			VALUES (datetime("now", "localtime"), {0}, {1})
-		""".format(round(temperature / 1, 1), round(humidite / 1, 1)))
+			VALUES (
+				datetime("now", "localtime"),
+				?,
+				?
+			)
+		""", (round(temperature / 1, 1), round(humidite / 1, 1)))
 		bdd_moyennes.commit()
 	return 0
 
@@ -456,13 +456,10 @@ def nettoyage_sauvegardes():
 		for fichier in fichiers
 	]
 
-	# Nombre de jours en secondes
-	nombre_jours = NBR_JOURS * 24 * 60 * 60
-	date_actuelle = time.time()
-
 	# Parcours les fichiers et supprime ceux datant de plus de 31 jours
+	date_actuelle = time.time()
 	for nom_fichier, date_fichier in dates_fichiers:
-		if ((date_actuelle - date_fichier) > nombre_jours):
+		if ((date_actuelle - date_fichier) > MOIS_SECONDES):
 			os.remove(nom_fichier)
 	return 0
 
@@ -473,16 +470,14 @@ def nettoyage_sauvegardes():
 """
 def copie_sauvegarde_bdd():
 	try:
-		shutil.copy2("{0}".format(CHEMIN_BDD_MESURES), "{0}{1}_{2}".format(
-			CHEMIN_SAUVEGARDE,
-			time.strftime("%d-%m-%Y"),
-			NOM_BDD_MESURES
-		))
-		shutil.copy2("{0}".format(CHEMIN_BDD_MOYENNES), "{0}{1}_{2}".format(
-			CHEMIN_SAUVEGARDE,
-			time.strftime("%d-%m-%Y"),
-			NOM_BDD_MOYENNES
-		))
+		shutil.copy2(
+			f"{CHEMIN_BDD_MESURES}",
+			f"{CHEMIN_SAUVEGARDE}{time.strftime('%d-%m-%Y')}_{NOM_BDD_MESURES}"
+		)
+		shutil.copy2(
+			f"{CHEMIN_BDD_MOYENNES}",
+			f"{CHEMIN_SAUVEGARDE}{time.strftime('%d-%m-%Y')}_{NOM_BDD_MOYENNES}"
+		)
 		return 0
 
 	except:
@@ -517,13 +512,13 @@ def nettoyage_bdd():
 	bdd_mesures.commit()
 
 	# Nettoyage de la base de données des moyennes
-	curseur_moyennes.execute("""
+	curseur_moyennes.execute(f"""
 		DELETE FROM meteor_moyennes
 		WHERE (
 			date_mesure <=
-			datetime("now", "localtime", "-{0} days", "-3 minutes")
+			datetime("now", "localtime", "-{NBR_JOURS_MOIS} days", "-3 minutes")
 		)
-	""".format(NBR_JOURS))
+	""")
 	bdd_moyennes.commit()
 	return 0
 
@@ -580,14 +575,12 @@ def afficher_mesures(temperature, humidite):
 # Messages d'information
 os.system("clear")
 
-print("{0}|Info| Mode {1}{2}".format(
-	couleur.BLEU_CLAIR,
-	("connecté" if mode_local == False else "local"),
-	couleur.FIN_STYLE
-))
+status_message = ("connecté" if mode_local == False else "local")
+print(f"{couleur.BLEU_CLAIR}|Info| Mode {status_message}{couleur.FIN_STYLE}")
 
-print("{0}|Info| Les messages d'erreur s'afficheront dans cette console{1}\n"
-	.format(couleur.BLEU_FONCE, couleur.FIN_STYLE)
+print(
+	f"{couleur.BLEU_FONCE}|Info| Les messages d'erreur s'afficheront dans " +
+	f"cette console{couleur.FIN_STYLE}\n"
 )
 
 # Attente de la mise en route des services réseaux de l'OS
@@ -595,11 +588,11 @@ time.sleep(5)
 
 connexion_sftp()
 while True:
-	# Calcul du temps de départ
-	temps_arrivee = dt.datetime.utcnow() + dt.timedelta(minutes = 3)
-	temps_arrivee = temps_arrivee.replace(second = 0, microsecond = 0)
-	if (temps_arrivee.minute > 0 and temps_arrivee.minute < 3):
-		temps_arrivee = temps_arrivee.replace(minute = 0)
+	# Calcul de l'heure de départ de la mesure
+	heure_arrivee = dt.datetime.utcnow() + dt.timedelta(minutes = 3)
+	heure_arrivee = heure_arrivee.replace(second = 0, microsecond = 0)
+	if (heure_arrivee.minute > 0 and heure_arrivee.minute < 3):
+		heure_arrivee = heure_arrivee.replace(minute = 0)
 
 	# Récupère les mesures
 	temperature = recup_mesure("temperature")
@@ -620,10 +613,10 @@ while True:
 		status_envoi = True
 
 	# Calcul et enregistrement des moyennes
-	maintenant = dt.datetime.utcnow()
-	if (maintenant.hour == temps_moyenne.hour):
+	heure_actuelle = dt.datetime.utcnow()
+	if (heure_actuelle.hour == heure_moyenne.hour):
 		# Calcul l'heure pour la prochaine moyenne
-		temps_moyenne = dt.datetime.utcnow() + dt.timedelta(hours = 1)
+		heure_moyenne = dt.datetime.utcnow() + dt.timedelta(hours = 1)
 
 		# Enregistrement de la moyenne pour température et humidité, puis envoi
 		enregistrer_moyennes()
@@ -632,8 +625,8 @@ while True:
 		# Nettoyage des bases de données une fois par jour
 		# Vérifie que l'heure est bien minuit dans le fuseau local français
 		if (
-			(time.localtime().tm_isdst == 1 and maintenant.hour == 22) or
-			(time.localtime().tm_isdst == 0 and maintenant.hour == 23)
+			(time.localtime().tm_isdst == 1 and heure_actuelle.hour == 22) or
+			(time.localtime().tm_isdst == 0 and heure_actuelle.hour == 23)
 		):
 			copie_sauvegarde_bdd()
 			nettoyage_sauvegardes()
@@ -643,6 +636,6 @@ while True:
 	afficher_mesures(temperature, humidite)
 
 	# Attente pour la mesure suivante
-	duree_attente = (temps_arrivee - dt.datetime.utcnow()).total_seconds()
+	duree_attente = (heure_arrivee - dt.datetime.utcnow()).total_seconds()
 	if (duree_attente > 0):
 		time.sleep(duree_attente)
