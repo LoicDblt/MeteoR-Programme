@@ -172,6 +172,7 @@ TRANSPARENT = 255
 ## Connexion par SFTP ##########################################################
 """
 @brief	Etablie la connexion SFTP au serveur
+
 @return 0 si la connexion est établie, -1 en cas d'erreur d'autentification,
 		-2 en cas d'erreur de formatage de la clé privée, -3 en cas d'erreur de
 		connexion au serveur
@@ -466,6 +467,7 @@ def nettoyage_sauvegardes():
 """
 @brief	Créé une copie des bases de données de mesures et de moyennes dans le
 		dossier de sauvegarde
+
 @return	0 si la copie s'est bien déroulée, -1 sinon
 """
 def copie_sauvegarde_bdd():
@@ -490,6 +492,7 @@ def copie_sauvegarde_bdd():
 		et maximales de la journée précédente, pour la base de données des
 		mesures.
 		Pour la base de données des moyennes, ne garde que les 31 derniers jours
+
 @return	0 si le nettoyage s'est bien déroulé, -1 sinon
 """
 def nettoyage_bdd():

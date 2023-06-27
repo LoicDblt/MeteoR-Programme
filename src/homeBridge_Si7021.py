@@ -1,6 +1,11 @@
 #! /usr/bin/python3
 # Auteur : DIEBOLT Loïc
 
+################################################################################
+#                             MeteoR - HomeBridge                              #
+################################################################################
+
+## Initialisation ##############################################################
 import adafruit_si7021
 import board
 import json
@@ -16,12 +21,14 @@ while True:
 	except RuntimeError:
 		continue
 
+## Classes #####################################################################
 # Chaque url va appeler sa classe ("url", "classe")
 urls = (
 	"/temp", "temp",
 	"/humi", "humi"
 )
 
+# Classe pour la température
 class temp:
 	def GET(self):
 		temperature = -1
@@ -34,6 +41,7 @@ class temp:
 				time.sleep(i)
 		return json.dumps(temperature)
 
+# Classe pour l'humidité
 class humi:
 	def GET(self):
 		humidite = -1
@@ -46,6 +54,7 @@ class humi:
 				time.sleep(i)
 		return json.dumps(humidite)
 
+## Programme principal #########################################################
 # Lance le serveur
 if __name__ == "__main__":
 	app = web.application(urls, globals())
