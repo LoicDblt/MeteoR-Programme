@@ -48,20 +48,20 @@ pip install -r requirements.txt
 Soit en installant manuellement chaque module :
 * Adafruit_SSD1306
   ```
-  sudo python -m pip install --upgrade pip setuptools wheel
-  sudo pip install Adafruit-SSD1306
+  python -m pip install --upgrade pip setuptools wheel
+  pip install Adafruit-SSD1306
   ```
 * adafruit_si7021
   ```
-  sudo pip install adafruit-circuitpython-si7021
+  pip install adafruit-circuitpython-si7021
   ```
 * paramiko
   ```
-  sudo pip install paramiko
+  pip install paramiko
   ```
 * Pillow
   ```
-  sudo pip install Pillow
+  pip install Pillow
   ```
 
 > **Remarque**  
@@ -113,7 +113,7 @@ Finalement, il ne reste plus qu'à installer le module ci-dessous, si le fichier
 *requirements.txt* n'a pas été utilisé précédemment.
 * Web
   ```
-  sudo pip install web.py
+  pip install web.py
   ```
 
 ## **Lancement du programme** <a name="hb-lancement-prog"></a>
