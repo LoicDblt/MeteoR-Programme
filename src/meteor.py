@@ -455,9 +455,10 @@ def enregistrer_moyennes():
 
 ## Gestion des sauvegardes #####################################################
 """
-@brief	Supprimer les anciennes sauvegardes datant de plus de 31 jours
+@brief	Supprimer les anciennes sauvegardes des bases de données datant de plus
+		de 31 jours
 """
-def nettoyage_sauvegardes():
+def nettoyage_sauvegardes_bdd():
 	# Récupérez tous les fichiers du répertoire avec leur date de modification
 	fichiers = glob.glob(os.path.join(CHEMIN_SAUVEGARDE, '*'))
 	dates_fichiers = [
@@ -639,8 +640,8 @@ while True:
 			(time.localtime().tm_isdst == 1 and heure_actuelle.hour == 22) or
 			(time.localtime().tm_isdst == 0 and heure_actuelle.hour == 23)
 		):
+			nettoyage_sauvegardes_bdd()
 			copie_sauvegarde_bdd()
-			nettoyage_sauvegardes()
 			nettoyage_bdd()
 
 	# Affichage des informations sur l'écran
