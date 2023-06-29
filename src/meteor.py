@@ -68,9 +68,9 @@ def messageErreur(message):
 
 ## Variables et initialisation #################################################
 # Chemins et noms des bases de données
-CHEMIN_SAUVEGARDE = "./sauvegardes/"
-CHEMIN_BDD = "./bdd/"
-NOM_BDD_MESURES = "donnees.db"
+CHEMIN_SAUVEGARDE = "../sauvegardes/"
+CHEMIN_BDD = "../bdd/"
+NOM_BDD_MESURES = "mesures.db"
 NOM_BDD_MOYENNES = "moyennes.db"
 CHEMIN_BDD_MESURES = CHEMIN_BDD + NOM_BDD_MESURES
 CHEMIN_BDD_MOYENNES = CHEMIN_BDD + NOM_BDD_MOYENNES
@@ -127,20 +127,28 @@ while True:
 bdd_mesures = sqlite3.connect(CHEMIN_BDD_MESURES)
 curseur_mesures = bdd_mesures.cursor()
 curseur_mesures.execute("""
-	CREATE TABLE IF NOT EXISTS meteor_donnees
-	(date_mesure CHAR, temperature_ambiante FLOAT, humidite_ambiante FLOAT,
+	CREATE TABLE IF NOT EXISTS mesures
+	(date CHAR, temp FLOAT, humi FLOAT,
 	max_temp FLOAT, min_temp FLOAT, max_humi FLOAT, min_humi FLOAT)
 """)
+bdd_mesures.commit()
 
 # Initialise les mesures min et max de température et d'humidité, si la base de
 # données est vide
-curseur_mesures.execute("""SELECT MIN(max_humi) FROM meteor_donnees""")
+curseur_mesures.execute("""
+	CREATE TABLE IF NOT EXISTS bornes
+	(date CHAR, max_temp FLOAT, min_temp FLOAT, max_humi FLOAT,
+	min_humi FLOAT)
+""")
+bdd_mesures.commit()
+
+curseur_mesures.execute("""SELECT MIN(max_humi) FROM bornes""")
 mesure_min = curseur_mesures.fetchall()[0][0]
 
 if (mesure_min == None):
 	curseur_mesures.execute("""
-		INSERT INTO meteor_donnees
-		(date_mesure, max_temp, min_temp, max_humi, min_humi)
+		INSERT INTO bornes
+		(date, max_temp, min_temp, max_humi, min_humi)
 		VALUES (datetime("now", "localtime"), 0, 100, 0, 100)
 	""")
 	bdd_mesures.commit()
@@ -151,8 +159,8 @@ bdd_moyennes = sqlite3.connect(CHEMIN_BDD_MOYENNES,
 )
 curseur_moyennes = bdd_moyennes.cursor()
 curseur_moyennes.execute("""
-	CREATE TABLE IF NOT EXISTS meteor_moyennes
-	(date_mesure CHAR, temperature_ambiante FLOAT, humidite_ambiante FLOAT)
+	CREATE TABLE IF NOT EXISTS moyennes
+	(date CHAR, temp FLOAT, humi FLOAT)
 """)
 bdd_moyennes.commit()
 
@@ -348,7 +356,7 @@ def recup_borne(type_operation, type_mesure):
 
 	curseur_mesures.execute(f"""
 		SELECT {type_operation}({type_mesure})
-		FROM meteor_donnees
+		FROM bornes
 	""")
 	return curseur_mesures.fetchall()[0][0]
 
@@ -367,8 +375,8 @@ def enregistrement_mesures(temperature, humidite):
 		return -1
 
 	curseur_mesures.execute(f"""
-		INSERT INTO meteor_donnees
-		(date_mesure, temperature_ambiante, humidite_ambiante)
+		INSERT INTO mesures
+		(date, temp, humi)
 		VALUES (datetime("now", "localtime"), ?, ?)
 	""", (temperature, humidite))
 	bdd_mesures.commit()
@@ -394,23 +402,23 @@ def enregistrer_borne(mesure, type_mesure):
 	elif (mesure == None):
 		return -2
 
-	elif (mesure > recup_borne("MAX", f"max_{type_mesure}")):
+	if (mesure > recup_borne("MAX", f"max_{type_mesure}")):
 		curseur_mesures.execute(f"""
-			INSERT INTO meteor_donnees
-			(date_mesure, max_{type_mesure})
+			INSERT INTO bornes
+			(date, max_{type_mesure})
 			VALUES (datetime("now", "localtime"), ?)
 		""", (mesure,))
 		bdd_mesures.commit()
-		return 0
 
-	elif (mesure < recup_borne("MIN", f"min_{type_mesure}")):
+	if (mesure < recup_borne("MIN", f"min_{type_mesure}")):
 		curseur_mesures.execute(f"""
-			INSERT INTO meteor_donnees
-			(date_mesure, min_{type_mesure})
+			INSERT INTO bornes
+			(date, min_{type_mesure})
 			VALUES (datetime("now", "localtime"), ?)
 		""", (mesure,))
 		bdd_mesures.commit()
-		return 0
+
+	return 0
 
 """
 @brief	Récupère la moyenne des mesure de température et d'humidite de l'heure
@@ -420,11 +428,11 @@ def enregistrer_borne(mesure, type_mesure):
 def enregistrer_moyennes():
 	# Récupère la moyenne de l'heure passée
 	curseur_mesures.execute("""
-		SELECT AVG(temperature_ambiante), AVG(humidite_ambiante)
-		FROM meteor_donnees
-		WHERE date_mesure >= datetime("now", "localtime", "-1 hour", "1 minute")
-		AND temperature_ambiante IS NOT NULL
-		AND humidite_ambiante IS NOT NULL
+		SELECT AVG(temp), AVG(humi)
+		FROM mesures
+		WHERE date >= datetime("now", "localtime", "-1 hour", "1 minute")
+		AND temp IS NOT NULL
+		AND humi IS NOT NULL
 	""")
 	moyenne_mesures = curseur_mesures.fetchall()[0]
 	temperature = moyenne_mesures[0]
@@ -434,8 +442,8 @@ def enregistrer_moyennes():
 	# fuseau été/hiver, puis ajoute dans la base de données des moyennes
 	if (temperature != None and humidite != None):
 		curseur_moyennes.execute(f"""
-			INSERT INTO meteor_moyennes
-			(date_mesure, temperature_ambiante, humidite_ambiante)
+			INSERT INTO moyennes
+			(date, temp, humi)
 			VALUES (
 				datetime("now", "localtime"),
 				?,
@@ -498,17 +506,17 @@ def copie_sauvegarde_bdd():
 def nettoyage_bdd():
 	# Nettoyage de la base de données des mesures
 	curseur_mesures.execute("""
-		DELETE FROM meteor_donnees
+		DELETE FROM mesures
 		WHERE (max_temp, min_temp, max_humi, min_humi) NOT IN (
 			SELECT MAX(max_temp), MIN(min_temp), MAX(max_humi), MIN(min_humi)
-			FROM meteor_donnees
+			FROM mesures
 		)
 		OR (
-			temperature_ambiante IS NOT NULL
-			AND humidite_ambiante IS NOT NULL
-			AND date_mesure NOT IN (
-				SELECT MAX(date_mesure)
-				FROM meteor_donnees
+			temp IS NOT NULL
+			AND humi IS NOT NULL
+			AND date NOT IN (
+				SELECT MAX(date)
+				FROM mesures
 			)
 		)
 	""")
@@ -516,9 +524,9 @@ def nettoyage_bdd():
 
 	# Nettoyage de la base de données des moyennes
 	curseur_moyennes.execute(f"""
-		DELETE FROM meteor_moyennes
+		DELETE FROM moyennes
 		WHERE (
-			date_mesure <=
+			date <=
 			datetime("now", "localtime", "-{NBR_JOURS_MOIS} days", "-3 minutes")
 		)
 	""")
