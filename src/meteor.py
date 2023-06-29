@@ -374,7 +374,7 @@ def enregistrement_mesures(temperature, humidite):
 	if (temperature == None or humidite == None):
 		return -1
 
-	curseur_mesures.execute(f"""
+	curseur_mesures.execute("""
 		INSERT INTO mesures
 		(date, temp, humi)
 		VALUES (datetime("now", "localtime"), ?, ?)
@@ -441,7 +441,7 @@ def enregistrer_moyennes():
 	# Vérification que les données existent, dans le cas d'un changement de
 	# fuseau été/hiver, puis ajoute dans la base de données des moyennes
 	if (temperature != None and humidite != None):
-		curseur_moyennes.execute(f"""
+		curseur_moyennes.execute("""
 			INSERT INTO moyennes
 			(date, temp, humi)
 			VALUES (
@@ -506,19 +506,22 @@ def copie_sauvegarde_bdd():
 """
 def nettoyage_bdd():
 	# Nettoyage de la base de données des mesures
+	## Nettoyage des mesures
 	curseur_mesures.execute("""
 		DELETE FROM mesures
-		WHERE (max_temp, min_temp, max_humi, min_humi) NOT IN (
-			SELECT MAX(max_temp), MIN(min_temp), MAX(max_humi), MIN(min_humi)
+		WHERE date NOT IN (
+			SELECT MAX(date)
 			FROM mesures
 		)
-		OR (
-			temp IS NOT NULL
-			AND humi IS NOT NULL
-			AND date NOT IN (
-				SELECT MAX(date)
-				FROM mesures
-			)
+	""")
+	bdd_mesures.commit()
+
+	## Nettoyage des bornes
+	curseur_mesures.execute("""
+		DELETE FROM bornes
+		WHERE (max_temp, min_temp, max_humi, min_humi) NOT IN (
+			SELECT MAX(max_temp), MIN(min_temp), MAX(max_humi), MIN(min_humi)
+			FROM bornes
 		)
 	""")
 	bdd_mesures.commit()
