@@ -68,19 +68,33 @@ def messageErreur(message):
 
 ## Variables et initialisation #################################################
 # Chemins et noms des bases de données
-CHEMIN_SAUVEGARDE = "../sauvegardes/"
-CHEMIN_BDD = "../bdd/"
 NOM_BDD_MESURES = "mesures.db"
 NOM_BDD_MOYENNES = "moyennes.db"
-CHEMIN_BDD_MESURES = CHEMIN_BDD + NOM_BDD_MESURES
-CHEMIN_BDD_MOYENNES = CHEMIN_BDD + NOM_BDD_MOYENNES
+
+DOSSIER_BDD = "../bdd/"
+CHEMIN_BDD_MESURES = DOSSIER_BDD + NOM_BDD_MESURES
+CHEMIN_BDD_MOYENNES = DOSSIER_BDD + NOM_BDD_MOYENNES
+
+DOSSIER_SAUV = "../sauvegardes/"
+CHEMIN_SAUV_MESURES = DOSSIER_SAUV + "mesures/"
+CHEMIN_SAUV_MOYENNES = DOSSIER_SAUV + "moyennes/"
 
 # Créé les dossiers de sauvegarde et de stockage des BDD s'ils n'existent pas
-if (os.path.isdir(CHEMIN_SAUVEGARDE) == False):
-	os.mkdir(CHEMIN_SAUVEGARDE)
+# Dossier de sauvagarde
+if (os.path.isdir(DOSSIER_SAUV) == False):
+	os.mkdir(DOSSIER_SAUV)
 
-if (os.path.isdir(CHEMIN_BDD) == False):
-	os.mkdir(CHEMIN_BDD)
+# Dossiers de sauvegarde des BDD de mesures
+if (os.path.isdir(CHEMIN_SAUV_MESURES) == False):
+	os.mkdir(CHEMIN_SAUV_MESURES)
+
+# Dossiers de sauvegarde des BDD de moyennes
+if (os.path.isdir(CHEMIN_SAUV_MOYENNES) == False):
+	os.mkdir(CHEMIN_SAUV_MOYENNES)
+
+# Dossier de stockage des BDD
+if (os.path.isdir(DOSSIER_BDD) == False):
+	os.mkdir(DOSSIER_BDD)
 
 # Formatage de la date et de l'heure
 locale.setlocale(locale.LC_ALL, "")
@@ -238,7 +252,7 @@ def connexion_sftp():
 
 	except:
 		erreur_sftp = True
-		messageErreur("La connexion par SFTP au serveur a échoué")
+		messageErreur("Connexion SFTP au serveur échouée")
 		return -4
 
 """
@@ -265,12 +279,12 @@ def deconnexion_sftp():
 def envoi_bdd(nom_fichier):
 	chemin = f"{CHEMIN_DOSSIER_WEB_SERVEUR}/bdd/{nom_fichier}"
 	try:
-		sftp.put(CHEMIN_BDD + nom_fichier, chemin)
+		sftp.put(DOSSIER_BDD + nom_fichier, chemin)
 		return 0
 
 	except IOError:
 		sftp.mkdir(f"{CHEMIN_DOSSIER_WEB_SERVEUR}/bdd")
-		sftp.put(CHEMIN_BDD + nom_fichier, chemin)
+		sftp.put(DOSSIER_BDD + nom_fichier, chemin)
 		return -1
 
 	except:
@@ -299,7 +313,9 @@ def gestion_envoi_bdd(nom_fichier):
 
 			except:
 				time.sleep(5 * nbr_essais)
-		messageErreur(f"L'envoi du fichier {CHEMIN_BDD + nom_fichier} a échoué")
+		messageErreur(
+			f"Envoi du fichier \"{DOSSIER_BDD + nom_fichier}\" échoué"
+		)
 		return -1
 
 ## Récupération des mesures ####################################################
@@ -383,9 +399,8 @@ def enregistrement_mesures(temperature, humidite):
 	return 0
 
 """
-@brief	Enregistre la mesure minimale ou maximale de température ou
-		d'humidité, si la mesure est supérieure ou inférieure à la borne
-		enregistrée dans la base de données
+@brief	Enregistre la mesure minimale et/ou maximale, en fonction de la valeur
+		minimale ou maximale stockée dans la base de données
 
 @param	mesure		Mesure à enregistrer
 @param	type_mesure	Chaîne de caractères indiquant le type de mesure
@@ -394,9 +409,9 @@ def enregistrement_mesures(temperature, humidite):
 @return	0 si la mesure a été enregistrée, -1 en cas d'erreur de type de mesure,
 		-2 en cas de mesure nulle
 """
-def enregistrer_borne(mesure, type_mesure):
+def enregistrer_bornes(mesure, type_mesure):
 	if (type_mesure != "temp" and type_mesure != "humi"):
-		messageErreur("enregistrer_borne | Type de mesure inconnu")
+		messageErreur("enregistrer_bornes | Type de mesure inconnu")
 		return -1
 
 	elif (mesure == None):
@@ -457,14 +472,24 @@ def enregistrer_moyennes():
 """
 @brief	Supprimer les anciennes sauvegardes des bases de données datant de plus
 		de 31 jours
+
+@param	chemin_sauv	Dossier où se trouvent les sauvegardes, dans le dossier
+					"DOSSIER_SAUV" (ie. "mesures/" ou "moyennes/")
+
+@return	0 si les sauvegardes ont été supprimées, -1 en cas d'erreur
 """
-def nettoyage_sauvegardes_bdd():
+def nettoyage_sauvegardes_bdd(chemin_sauv):
 	# Récupérez tous les fichiers du répertoire avec leur date de modification
-	fichiers = glob.glob(os.path.join(CHEMIN_SAUVEGARDE, '*'))
-	dates_fichiers = [
-		(fichier, os.path.getmtime(fichier))
-		for fichier in fichiers
-	]
+	try:
+		fichiers = glob.glob(
+			os.path.join(chemin_sauv, '*')
+		)
+		dates_fichiers = [
+			(fichier, os.path.getmtime(fichier))
+			for fichier in fichiers
+		]
+	except:
+		return -1
 
 	# Parcours les fichiers et supprime ceux datant de plus de 31 jours
 	date_actuelle = time.time()
@@ -477,22 +502,27 @@ def nettoyage_sauvegardes_bdd():
 @brief	Créé une copie des bases de données de mesures et de moyennes dans le
 		dossier de sauvegarde
 
+@param	chemin_sauv	Dossier où se trouvent les sauvegardes, dans le dossier
+					"DOSSIER_SAUV" (ie. "mesures/" ou "moyennes/")
+@param	nom_bdd		Nom de la base de données à sauvegarder
+
 @return	0 si la copie s'est bien déroulée, -1 sinon
 """
-def copie_sauvegarde_bdd():
+def copie_sauvegarde_bdd(chemin_sauv, nom_bdd):
 	try:
+		# Format du type : ../sauvegardes/mesures/01-01-1970_mesures.db
 		shutil.copy2(
-			f"{CHEMIN_BDD_MESURES}",
-			f"{CHEMIN_SAUVEGARDE}{time.strftime('%d-%m-%Y')}_{NOM_BDD_MESURES}"
-		)
-		shutil.copy2(
-			f"{CHEMIN_BDD_MOYENNES}",
-			f"{CHEMIN_SAUVEGARDE}{time.strftime('%d-%m-%Y')}_{NOM_BDD_MOYENNES}"
+			f"{DOSSIER_BDD + nom_bdd}",
+			f"{chemin_sauv}{time.strftime('%d-%m-%Y')}_" +
+			f"{nom_bdd}"
 		)
 		return 0
 
 	except:
-		messageErreur("Copie des bases de données de sauvegarde échouée")
+		messageErreur(
+			f"Sauvegarde de la base de données \"{DOSSIER_BDD + nom_bdd}\" " +
+			"échouée"
+		)
 		return -1
 
 """
@@ -529,10 +559,7 @@ def nettoyage_bdd():
 	# Nettoyage de la base de données des moyennes
 	curseur_moyennes.execute(f"""
 		DELETE FROM moyennes
-		WHERE (
-			date <=
-			datetime("now", "localtime", "-{NBR_JOURS_MOIS} days", "-3 minutes")
-		)
+		WHERE date <= datetime("now", "localtime", "-{NBR_JOURS_MOIS} days")
 	""")
 	bdd_moyennes.commit()
 	return 0
@@ -617,8 +644,8 @@ while True:
 	enregistrement_mesures(temperature, humidite)
 
 	# Enregistrement des bornes min et max
-	enregistrer_borne(temperature, "temp")
-	enregistrer_borne(humidite, "humi")
+	enregistrer_bornes(temperature, "temp")
+	enregistrer_bornes(humidite, "humi")
 
 	# Envoi de la base de données des mesures au serveur
 	gestion_envoi_bdd(NOM_BDD_MESURES)
@@ -643,8 +670,15 @@ while True:
 			(time.localtime().tm_isdst == 1 and heure_actuelle.hour == 22) or
 			(time.localtime().tm_isdst == 0 and heure_actuelle.hour == 23)
 		):
-			nettoyage_sauvegardes_bdd()
-			copie_sauvegarde_bdd()
+			# Nettoyage des dossiers de sauvegarde
+			nettoyage_sauvegardes_bdd(CHEMIN_SAUV_MESURES)
+			nettoyage_sauvegardes_bdd(CHEMIN_SAUV_MOYENNES)
+
+			# Sauvegarde des bases de données
+			copie_sauvegarde_bdd(CHEMIN_SAUV_MESURES, NOM_BDD_MESURES)
+			copie_sauvegarde_bdd(CHEMIN_SAUV_MOYENNES, NOM_BDD_MOYENNES)
+
+			# Nettoyage des bases de données
 			nettoyage_bdd()
 
 	# Affichage des informations sur l'écran
