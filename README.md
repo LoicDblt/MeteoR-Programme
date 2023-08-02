@@ -1,7 +1,7 @@
 # MeteoR - Programme
 Ce programme, écrit en Python 3, permet au travers d'un Raspberry Pi
 relié à une sonde Si7021 et un écran SSD1306, de récupérer la température et
-l'humidité relative ambiante d'une pièce.
+l'humidité relative d'une pièce.
 
 ## **Sommaire**
 - [Programme](#meteor---programme)
