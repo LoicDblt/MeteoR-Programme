@@ -11,9 +11,6 @@ l'humidité relative ambiante d'une pièce.
     - [Liens pour l'assemblage](#liens-pour-lassemblage)
     - [Dépendances](#dépendances)
   - [Lancement du programme](#lancement-du-programme)
-- [\[Optionnel\] HomeBridge](#optionnel-homebridge)
-  - [Installation](#hb-installation)
-  - [Lancement du programme](#hb-lancement-prog)
 
 ## **Présentation**
 Le programme MeteoR va enregistrer les données de température et d'hygrométrie,
@@ -33,7 +30,7 @@ ainsi que l'écran SSD1306.
 Les instructions de montage sont trouvables sur le site d'Adafruit (liens
 ci-dessous).
 
-#### Liens pour l'assemblage
+### Liens pour l'assemblage
 * [Si7021](https://learn.adafruit.com/adafruit-si7021-temperature-plus-humidity-sensor/assembly)
 * [SSD1306](https://learn.adafruit.com/monochrome-oled-breakouts/wiring-128x64-oleds)
 
@@ -91,34 +88,3 @@ programme en fond, même lorsque la session SSH est fermée.
 Aussi, il est également possible d'utiliser un script (cf. le fichier
 *squelette_lancement.sh*), afin de lancer automatiquement le programme
 au démarrage du Raspberry Pi, avec l'aide d'une tâche CRON.
-
-# [Optionnel] HomeBridge
-Pour utiliser le capteur relié au Raspberry au travers d'HomeKit, il est
-possible d'utiliser
-Le programme *homeBridge_Si7021.py* fournis les données au format *json* au
-travers d'un serveur web local, permettant l'affichage des données grâce à des
-plugins HomeBridge.
-
-## **Installation** <a name="hb-installation"></a>
-Il faut tout d'abord installer HomeBridge sur le Raspberry, dont les indications
-sont fournies sur la page suivante :
-* [HomeBridge - Install HomeBridge on Raspbian](https://github.com/homebridge/homebridge/wiki/Install-Homebridge-on-Raspbian)  
-
-Une fois celui-ci installé, il est nécessaire d'ajouter, grâce à l'interface
-d'administration, les plugins :
-* [HomeBridge HTTP Temperature sensor](https://github.com/Supereg/homebridge-http-temperature-sensor#readme)
-* [HomeBridge HTTP Humidity sensor](https://github.com/Supereg/homebridge-http-humidity-sensor#readme)
-
-Finalement, il ne reste plus qu'à installer le module ci-dessous, si le fichier
-*requirements.txt* n'a pas été utilisé précédemment.
-* Web
-  ```
-  pip install web.py
-  ```
-
-## **Lancement du programme** <a name="hb-lancement-prog"></a>
-Une fois l'installation terminée, il ne reste plus qu'à lancer le programme à
-l'aide de la commande :
-```shell
-python homeBridge_Si7021.py
-```

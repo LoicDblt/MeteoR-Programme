@@ -16,8 +16,3 @@ $ADRESSE_SFTP \
 $CHEMIN_SERVEUR \
 $UTILISATEUR_SFTP \
 $CHEMIN_CLE_SSH \n"
-
-# Usage : python3 homeBridge_Si7021.py
-screen -dmS homebridge
-screen -S homebridge -p 0 -X stuff "cd $CHEMIN_LOCAL && \
-python3 homeBridge_Si7021.py \n"
