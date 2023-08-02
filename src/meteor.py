@@ -103,12 +103,14 @@ locale.setlocale(locale.LC_ALL, "")
 status_envoi = False
 erreur_capteur_affichee = False
 erreur_sftp_affichee = False
+valeur_aberrante = False
 
 # Gestion du temps
 erreur_sftp = False
 heure_moyenne = dt.datetime.utcnow() + dt.timedelta(hours = 1)
 NBR_JOURS_MOIS = 31
 MOIS_SECONDES = NBR_JOURS_MOIS * 24 * 60 * 60
+DELAIS_MESURE = 3
 
 # Mesures de température et d'humidité
 temperature = 0
@@ -334,14 +336,51 @@ def recup_mesure(type_mesure):
 
 	# Récupération de la mesure (arrondie à une décmiale près)
 	mesure = None
+	mesure_prec = None
 	for _ in range(4):
 		try:
 			if (type_mesure == "temperature"):
 				mesure = round(capteur.temperature, 1)
 
+				# Récupère la dernière mesure de température
+				mesure_prec = curseur_mesures.execute("""
+					SELECT temp
+					FROM mesures
+					ORDER BY date DESC LIMIT 1
+				""")
+
 			elif (type_mesure == "humidite"):
 				mesure = round(capteur.relative_humidity, 1)
-			break
+
+				# Récupère la dernière mesure d'humidité
+				mesure_prec = curseur_mesures.execute("""
+					SELECT humi
+					FROM mesures
+					ORDER BY date DESC LIMIT 1
+				""")
+
+
+			# Récupère la date de la dernière mesure
+			date_prec = curseur_mesures.execute("""
+				SELECT date
+				FROM mesures
+				ORDER BY date DESC LIMIT 1
+			""").fetchall()[0][0]
+			date_prec = dt.datetime.strptime(date_prec, "%Y-%m-%d %H:%M:%S")
+			delta_secs = (dt.datetime.now() - date_prec).total_seconds() / 60
+
+			# Si la mesure est aberrante, on en refait une
+			# Cela n'est effectué que si la mesure précédente date d'il y a
+			# moins de 6 minutes
+			if (
+				delta_secs < (DELAIS_MESURE * 2) and
+				mesure > mesure_prec + 1 or mesure < mesure_prec - 1
+			):
+				time.sleep(0.1)
+				continue
+
+			else:
+				break
 
 		except:
 			time.sleep(0.1)
@@ -631,9 +670,9 @@ time.sleep(5)
 connexion_sftp()
 while True:
 	# Calcul de l'heure de départ de la mesure
-	heure_arrivee = dt.datetime.utcnow() + dt.timedelta(minutes = 3)
+	heure_arrivee = dt.datetime.utcnow() + dt.timedelta(minutes = DELAIS_MESURE)
 	heure_arrivee = heure_arrivee.replace(second = 0, microsecond = 0)
-	if (heure_arrivee.minute > 0 and heure_arrivee.minute < 3):
+	if (heure_arrivee.minute > 0 and heure_arrivee.minute < DELAIS_MESURE):
 		heure_arrivee = heure_arrivee.replace(minute = 0)
 
 	# Récupère les mesures
