@@ -103,7 +103,6 @@ locale.setlocale(locale.LC_ALL, "")
 status_envoi = False
 erreur_capteur_affichee = False
 erreur_sftp_affichee = False
-valeur_aberrante = False
 
 # Gestion du temps
 erreur_sftp = False
@@ -322,15 +321,16 @@ def gestion_envoi_bdd(nom_fichier):
 
 ## Récupération des mesures ####################################################
 """
-@brief	Récupère la mesure de température ou d'humidité
+@brief	Récupère la mesure de température ou d'humidité et vérifie qu'elle n'est
+		pas aberrante (un écart de +/- 1°C de température ou 1% d'humidité)
 
 @param	type_mesure	Chaîne de caractères indiquant le type de mesure
-		("temperature" ou "humidite")
+		("temp" ou "humi")
 
 @return	La mesure récupérée, ou None en cas d'erreur
 """
 def recup_mesure(type_mesure):
-	if (type_mesure != "temperature" and type_mesure != "humidite"):
+	if (type_mesure != "temp" and type_mesure != "humi"):
 		messageErreur("recup_mesure | Type de mesure inconnu")
 		return None
 
@@ -339,51 +339,46 @@ def recup_mesure(type_mesure):
 	mesure_prec = None
 	for _ in range(4):
 		try:
-			if (type_mesure == "temperature"):
+			if (type_mesure == "temp"):
 				mesure = round(capteur.temperature, 1)
 
-				# Récupère la dernière mesure de température
-				mesure_prec = curseur_mesures.execute("""
-					SELECT temp
-					FROM mesures
-					ORDER BY date DESC LIMIT 1
-				""")
-
-			elif (type_mesure == "humidite"):
+			elif (type_mesure == "humi"):
 				mesure = round(capteur.relative_humidity, 1)
-
-				# Récupère la dernière mesure d'humidité
-				mesure_prec = curseur_mesures.execute("""
-					SELECT humi
-					FROM mesures
-					ORDER BY date DESC LIMIT 1
-				""")
-
-
-			# Récupère la date de la dernière mesure
-			date_prec = curseur_mesures.execute("""
-				SELECT date
-				FROM mesures
-				ORDER BY date DESC LIMIT 1
-			""").fetchall()[0][0]
-			date_prec = dt.datetime.strptime(date_prec, "%Y-%m-%d %H:%M:%S")
-			delta_secs = (dt.datetime.now() - date_prec).total_seconds() / 60
-
-			# Si la mesure est aberrante, on en refait une
-			# Cela n'est effectué que si la mesure précédente date d'il y a
-			# moins de 6 minutes
-			if (
-				delta_secs < (DELAIS_MESURE * 2) and
-				mesure > mesure_prec + 1 or mesure < mesure_prec - 1
-			):
-				time.sleep(0.1)
-				continue
-
-			else:
-				break
 
 		except:
 			time.sleep(0.1)
+			continue
+
+		# Récupère la date de la dernière mesure
+		date_prec = curseur_mesures.execute("""
+			SELECT date
+			FROM mesures
+			ORDER BY date DESC LIMIT 1
+		""").fetchall()[0][0]
+		date_prec = dt.datetime.strptime(date_prec, "%Y-%m-%d %H:%M:%S")
+		delta_secs = (dt.datetime.now() - date_prec).total_seconds() / 60
+
+		# Récupère la dernière mesure de température ou d'humidité
+		mesure_prec = curseur_mesures.execute(f"""
+			SELECT {type_mesure}
+			FROM mesures
+			ORDER BY date DESC LIMIT 1
+		""").fetchall()[0][0]
+
+		# Si la mesure est aberrante, on en refait une
+		# Cela n'est effectué que si la mesure précédente date d'il y a
+		# moins de 6 minutes
+		if (
+			delta_secs < (DELAIS_MESURE * 2) and
+			mesure > (mesure_prec + 1) or
+			mesure < (mesure_prec - 1)
+		):
+			time.sleep(0.1)
+			continue
+
+		else:
+			break
+
 	return mesure
 
 """
@@ -676,8 +671,8 @@ while True:
 		heure_arrivee = heure_arrivee.replace(minute = 0)
 
 	# Récupère les mesures
-	temperature = recup_mesure("temperature")
-	humidite = recup_mesure("humidite")
+	temperature = recup_mesure("temp")
+	humidite = recup_mesure("humi")
 
 	# Enregistrement de la température et de l'humidité
 	enregistrement_mesures(temperature, humidite)
