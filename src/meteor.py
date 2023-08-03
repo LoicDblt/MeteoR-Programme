@@ -114,6 +114,7 @@ DELAIS_MESURE = 3
 # Mesures de température et d'humidité
 temperature = 0
 humidite = 0
+MARGE_MESURE = 1
 
 # Paramètres de connexion au serveur SFTP
 if (mode_local == False):
@@ -322,7 +323,7 @@ def gestion_envoi_bdd(nom_fichier):
 ## Récupération des mesures ####################################################
 """
 @brief	Récupère la mesure de température ou d'humidité et vérifie qu'elle n'est
-		pas aberrante (un écart de +/- 1°C de température ou 1% d'humidité)
+		pas aberrante (un écart de +/- MARGE_MESURE)
 
 @param	type_mesure	Chaîne de caractères indiquant le type de mesure
 		("temp" ou "humi")
@@ -336,7 +337,6 @@ def recup_mesure(type_mesure):
 
 	# Récupération de la mesure (arrondie à une décmiale près)
 	mesure = None
-	mesure_prec = None
 	for _ in range(4):
 		try:
 			if (type_mesure == "temp"):
@@ -349,29 +349,22 @@ def recup_mesure(type_mesure):
 			time.sleep(0.1)
 			continue
 
-		# Récupère la date de la dernière mesure
-		date_prec = curseur_mesures.execute("""
-			SELECT date
+		# Récupère la dernière date et mesure liée
+		donnees_prec = curseur_mesures.execute(f"""
+			SELECT date, {type_mesure}
 			FROM mesures
 			ORDER BY date DESC LIMIT 1
-		""").fetchall()[0][0]
-		date_prec = dt.datetime.strptime(date_prec, "%Y-%m-%d %H:%M:%S")
+		""").fetchall()[0]
+		date_prec = dt.datetime.strptime(donnees_prec[0], "%Y-%m-%d %H:%M:%S")
 		delta_secs = (dt.datetime.now() - date_prec).total_seconds() / 60
-
-		# Récupère la dernière mesure de température ou d'humidité
-		mesure_prec = curseur_mesures.execute(f"""
-			SELECT {type_mesure}
-			FROM mesures
-			ORDER BY date DESC LIMIT 1
-		""").fetchall()[0][0]
 
 		# Si la mesure est aberrante, on en refait une
 		# Cela n'est effectué que si la mesure précédente date d'il y a
 		# moins de 6 minutes
 		if (
 			delta_secs < (DELAIS_MESURE * 2) and
-			mesure > (mesure_prec + 1) or
-			mesure < (mesure_prec - 1)
+			mesure > (donnees_prec[1] + MARGE_MESURE) or
+			mesure < (donnees_prec[1] - MARGE_MESURE)
 		):
 			time.sleep(0.1)
 			continue

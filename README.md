@@ -17,7 +17,9 @@ Le programme MeteoR va enregistrer les données de température et d'hygrométri
 puis chaque heure générera la moyenne des mesures effectuées. Ces données seront
 enregistrées dans des bases de données, qui seront transmises à [un site
 internet](https://github.com/LoicDblt/MeteoR-Site), afin de les afficher par la
-suite.  
+suite.
+<br>
+
 Ainsi, on retrouvera un affichage local sur l'écran, avec les informations
 actuelles, mais aussi au travers dudit site en proposant davantage
 d'informations, telles que l'évolution de la température/humidité dans le temps
@@ -41,6 +43,7 @@ Soit en utilisant le fichier des dépendances mis à disposition :
 ```
 pip install -r requirements.txt
 ```
+<br>
 
 Soit en installant manuellement chaque module :
 * Adafruit_SSD1306
@@ -60,6 +63,7 @@ Soit en installant manuellement chaque module :
   ```
   pip install Pillow
   ```
+<br>
 
 > **Remarque**  
 Il peut être nécessaire de préciser la version de Python en
@@ -73,6 +77,7 @@ publique, utilisant le chiffrement Ed25519, sur le serveur au préalable :
 ```shell
 python meteor.py <Adresse SFTP> <Port SFTP> <Chemin racine sur le serveur> <Identifiant SFTP> <Clé SSH privée>
 ```
+<br>
 
 > **Remarque**  
 Comme précédemment, il peut être nécessaire de préciser la
@@ -82,6 +87,7 @@ version de Python en utilisant ```python3```.
 Pour lancer le programme sans adjoindre de serveur et donc uniquement obtenir
 les informations sur l'écran connecté au Raspberry, il suffit de ne pas
 renseigner les différents arguments précédemment indiqués.
+<br>
 
 Il est recommandé de créer un ```screen``` afin de garder en permanence le
 programme en fond, même lorsque la session SSH est fermée.  
