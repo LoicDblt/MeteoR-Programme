@@ -354,19 +354,28 @@ def recup_mesure(type_mesure):
 			SELECT date, {type_mesure}
 			FROM mesures
 			ORDER BY date DESC LIMIT 1
-		""").fetchall()[0]
+		""").fetchall()
+
+		if (len(donnees_prec) > 0):
+			donnees_prec = donnees_prec[0]
+
+		else:
+			break
+
 		date_prec = dt.datetime.strptime(donnees_prec[0], "%Y-%m-%d %H:%M:%S")
-		delta_secs = (dt.datetime.now() - date_prec).total_seconds() / 60
+		delta_minutes = (dt.datetime.now() - date_prec).total_seconds() / 60
 
 		# Si la mesure est aberrante, on en refait une
 		# Cela n'est effectué que si la mesure précédente date d'il y a
 		# moins de 6 minutes
 		if (
-			delta_secs < (DELAIS_MESURE * 2) and
-			mesure > (donnees_prec[1] + MARGE_MESURE) or
-			mesure < (donnees_prec[1] - MARGE_MESURE)
+			delta_minutes < (DELAIS_MESURE * 2) and
+			(
+				mesure > (donnees_prec[1] + MARGE_MESURE) or
+				mesure < (donnees_prec[1] - MARGE_MESURE)
+			)
 		):
-			time.sleep(0.1)
+			time.sleep(0.5)
 			continue
 
 		else:
