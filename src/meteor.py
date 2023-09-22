@@ -114,7 +114,7 @@ DELAIS_MESURE = 3
 # Mesures de température et d'humidité
 temperature = 0
 humidite = 0
-MARGE_MESURE = 1
+MARGE_MESURE = 5
 
 # Paramètres de connexion au serveur SFTP
 if (mode_local == False):
