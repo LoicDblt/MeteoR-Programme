@@ -83,9 +83,12 @@ def messageErreur(message):
 	return
 
 ## Variables et initialisation #################################################
-# CHemin fichier de logs
+# Dossier de sauvegarde des informations
+DOSSIER_JOURNAUX = "../../MeteoR-Journaux/"
+
+# Chemin fichier de logs
 NOM_LOGS = "meteor_" + str(int(time.time())) + ".log"
-DOSSIER_LOGS = "../logs/"
+DOSSIER_LOGS = DOSSIER_JOURNAUX + "logs/"
 CHEMIN_LOGS = DOSSIER_LOGS + NOM_LOGS
 
 # Chemins et noms des bases de données
@@ -96,28 +99,32 @@ DOSSIER_BDD = "../bdd/"
 CHEMIN_BDD_MESURES = DOSSIER_BDD + NOM_BDD_MESURES
 CHEMIN_BDD_MOYENNES = DOSSIER_BDD + NOM_BDD_MOYENNES
 
-DOSSIER_SAUV = "../sauvegardes/"
+DOSSIER_SAUV = DOSSIER_JOURNAUX + "sauvegardes/"
 CHEMIN_SAUV_MESURES = DOSSIER_SAUV + "mesures/"
 CHEMIN_SAUV_MOYENNES = DOSSIER_SAUV + "moyennes/"
 
-# Créé les dossiers de logs, de sauvegarde et des BDD s'ils n'existent pas
-# Dossier de logs
+# Créé les dossiers
+## Dossier de sauvegarde des informations
+if (os.path.isdir(DOSSIER_JOURNAUX) == False):
+	os.mkdir(DOSSIER_JOURNAUX)
+
+## Dossier de logs
 if (os.path.isdir(DOSSIER_LOGS) == False):
 	os.mkdir(DOSSIER_LOGS)
 
-# Dossier de sauvagarde
+## Dossier de sauvagarde
 if (os.path.isdir(DOSSIER_SAUV) == False):
 	os.mkdir(DOSSIER_SAUV)
 
-# Dossiers de sauvegarde des BDD de mesures
+## Dossiers de sauvegarde des BDD de mesures
 if (os.path.isdir(CHEMIN_SAUV_MESURES) == False):
 	os.mkdir(CHEMIN_SAUV_MESURES)
 
-# Dossiers de sauvegarde des BDD de moyennes
+## Dossiers de sauvegarde des BDD de moyennes
 if (os.path.isdir(CHEMIN_SAUV_MOYENNES) == False):
 	os.mkdir(CHEMIN_SAUV_MOYENNES)
 
-# Dossier de stockage des BDD
+## Dossier de stockage des BDD
 if (os.path.isdir(DOSSIER_BDD) == False):
 	os.mkdir(DOSSIER_BDD)
 
