@@ -53,20 +53,41 @@ import shutil
 import sqlite3
 import time
 
-## Messages d'erreur ###########################################################
+## Logs des erreurs ############################################################
 """
-@brief	Affiche un message d'erreur en rouge, avec la date et l'heure
+@brief	Enregistre un message dans le fichier de logs
+
+@param	message	Le message à enregistrer
+"""
+def enregistrerLogs(message):
+	with open(CHEMIN_LOGS, "a") as file:
+		log_message = (f"|Erreur - {time.strftime('%d/%m')} à " +
+			f"{time.strftime('%H:%M')}| {message}")
+		file.write(log_message + "\n")
+
+"""
+@brief	Affiche un message d'erreur dans la console et l'enregistre dans le
+		fichier de logs
 
 @param	message	Le message d'erreur à afficher
 """
 def messageErreur(message):
+	messageDate = (f"|Erreur - {time.strftime('%d/%m')} à " +
+		f"{time.strftime('%H:%M')}| {message}")
+	enregistrerLogs(messageDate)
+
+	# Affiche le message d'erreur dans la console
 	print(
-		f"{couleur.ROUGE}|Erreur - {time.strftime('%d/%m')} à " +
-		f"{time.strftime('%H:%M')}| {message}{couleur.FIN_STYLE}"
+		f"{couleur.ROUGE}{messageDate}{couleur.FIN_STYLE}"
 	)
 	return
 
 ## Variables et initialisation #################################################
+# CHemin fichier de logs
+NOM_LOGS = "meteor_" + str(int(time.time())) + ".log"
+DOSSIER_LOGS = "../logs/"
+CHEMIN_LOGS = DOSSIER_LOGS + NOM_LOGS
+
 # Chemins et noms des bases de données
 NOM_BDD_MESURES = "mesures.db"
 NOM_BDD_MOYENNES = "moyennes.db"
@@ -79,7 +100,11 @@ DOSSIER_SAUV = "../sauvegardes/"
 CHEMIN_SAUV_MESURES = DOSSIER_SAUV + "mesures/"
 CHEMIN_SAUV_MOYENNES = DOSSIER_SAUV + "moyennes/"
 
-# Créé les dossiers de sauvegarde et de stockage des BDD s'ils n'existent pas
+# Créé les dossiers de logs, de sauvegarde et des BDD s'ils n'existent pas
+# Dossier de logs
+if (os.path.isdir(DOSSIER_LOGS) == False):
+	os.mkdir(DOSSIER_LOGS)
+
 # Dossier de sauvagarde
 if (os.path.isdir(DOSSIER_SAUV) == False):
 	os.mkdir(DOSSIER_SAUV)
@@ -221,10 +246,13 @@ def connexion_sftp():
 		erreur_sftp = False
 		if (erreur_sftp_affichee == True):
 			erreur_sftp_affichee = False
+
+			messageDate = (f"|Info - {time.strftime('%d/%m')} à " +
+				f"{time.strftime('%H:%M')}| Connexion par SFTP rétablie")
+			enregistrerLogs(messageDate)
+
 			print(
-				f"{couleur.VERT}|Info - {time.strftime('%d/%m ')} à " +
-				f"{time.strftime('%H:%M')}| Connexion par SFTP rétablie" +
-				f"{couleur.FIN_STYLE}"
+				f"{couleur.VERT}{messageDate}{couleur.FIN_STYLE}"
 			)
 		return 0
 
@@ -367,15 +395,15 @@ def recup_mesure(type_mesure):
 
 		# Si la mesure est aberrante, on en refait une
 		# Cela n'est effectué que si la mesure précédente date d'il y a
-		# moins de 6 minutes
+		# moins de 12 minutes
 		if (
-			delta_minutes < (DELAIS_MESURE * 2) and
+			delta_minutes < (DELAIS_MESURE * 4) and
 			(
 				mesure > (donnees_prec[1] + MARGE_MESURE) or
 				mesure < (donnees_prec[1] - MARGE_MESURE)
 			)
 		):
-			time.sleep(0.5)
+			time.sleep(1)
 			continue
 
 		else:
@@ -652,13 +680,16 @@ def afficher_mesures(temperature, humidite):
 ## Programme principal #########################################################
 # Messages d'information
 os.system("clear")
-
 status_message = ("connecté" if mode_local == False else "local")
-print(f"{couleur.BLEU_CLAIR}|Info| Mode {status_message}{couleur.FIN_STYLE}")
 
+messageDate = f"|Info| Mode {status_message}"
+enregistrerLogs(messageDate)
+
+print(f"{couleur.BLEU_CLAIR}{messageDate}{couleur.FIN_STYLE}")
 print(
 	f"{couleur.BLEU_FONCE}|Info| Les messages d'erreur s'afficheront dans " +
-	f"cette console{couleur.FIN_STYLE}\n"
+	f"cette console et sont enregistrés dans le fichier \"{CHEMIN_LOGS}\"" +
+	f"{couleur.FIN_STYLE}\n"
 )
 
 # Attente de la mise en route des services réseaux de l'OS

@@ -9,8 +9,8 @@ readonly CHEMIN_CLE_SSH="/dossier/emplacement/clé_ssh_privée"
 
 # Usage : python3 meteor.py <Adresse SFTP> <Chemin racine sur le serveur>
 #		  <Identifiant SFTP> <Clé SSH privée>
-screen -dmS meteor
-screen -S meteor -p 0 -X stuff "cd $CHEMIN_LOCAL && \
+ screen -dmS meteor
+ screen -S meteor -p 0 -X stuff " cd $CHEMIN_LOCAL && \
 python3 meteor.py \
 $ADRESSE_SFTP \
 $CHEMIN_SERVEUR \
