@@ -61,9 +61,7 @@ import time
 """
 def enregistrerLogs(message):
 	with open(CHEMIN_LOGS, "a") as file:
-		log_message = (f"|Erreur - {time.strftime('%d/%m')} à " +
-			f"{time.strftime('%H:%M')}| {message}")
-		file.write(log_message + "\n")
+		file.write(message + "\n")
 
 """
 @brief	Affiche un message d'erreur dans la console et l'enregistre dans le
