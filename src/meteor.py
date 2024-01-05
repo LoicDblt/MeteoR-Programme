@@ -69,15 +69,17 @@ def enregistrerLogs(message):
 
 @param	message	Le message d'erreur à afficher
 """
-def messageErreur(message):
-	messageDate = (f"|Erreur - {time.strftime('%d/%m')} à " +
+def messageConsoleLog(typeErr, message):
+	messageDate = (f"|{typeErr} - {time.strftime('%d/%m')} à " +
 		f"{time.strftime('%H:%M')}| {message}")
 	enregistrerLogs(messageDate)
 
 	# Affiche le message d'erreur dans la console
-	print(
-		f"{couleur.ROUGE}{messageDate}{couleur.FIN_STYLE}"
-	)
+	if (typeErr == "Erreur"):
+		print(f"{couleur.ROUGE}{messageDate}{couleur.FIN_STYLE}")
+	else:
+		print(f"{couleur.BLEU_CLAIR}{messageDate}{couleur.FIN_STYLE}")
+
 	return
 
 ## Variables et initialisation #################################################
@@ -162,7 +164,8 @@ while True:
 
 	except RuntimeError:
 		if (erreur_capteur_affichee == False):
-			messageErreur(
+			messageConsoleLog(
+				"Erreur",
 				"Initialisation du capteur échouée, " +
 				"correction en cours, veuillez patienter..."
 			)
@@ -251,20 +254,14 @@ def connexion_sftp():
 		erreur_sftp = False
 		if (erreur_sftp_affichee == True):
 			erreur_sftp_affichee = False
-
-			messageDate = (f"|Info - {time.strftime('%d/%m')} à " +
-				f"{time.strftime('%H:%M')}| Connexion par SFTP rétablie")
-			enregistrerLogs(messageDate)
-
-			print(
-				f"{couleur.VERT}{messageDate}{couleur.FIN_STYLE}"
-			)
+			messageConsoleLog("Info", "Connexion par SFTP rétablie")
 		return 0
 
 	except paramiko.AuthenticationException:
 		if (erreur_sftp_affichee == False):
 			erreur_sftp_affichee = True
-			messageErreur(
+			messageConsoleLog(
+				"Erreur",
 				"Identifiant ou mauvaise clé SSH fournie.\n" +
 				"Une nouvelle tentative sera effectuée après chaque " +
 				"nouvelle mesure.\nVeuillez relancer le programme si " +
@@ -274,7 +271,8 @@ def connexion_sftp():
 		return -1
 
 	except paramiko.ssh_exception.SSHException:
-			messageErreur(
+			messageConsoleLog(
+				"Erreur",
 				"Format de clé SSH non reconnu (chiffrement Ed25519 attendu)" +
 				", passage en mode local"
 			)
@@ -282,12 +280,12 @@ def connexion_sftp():
 			return -2
 
 	except OSError as erreur:
-		messageErreur(erreur)
+		messageConsoleLog("Erreur", erreur)
 		return -3
 
 	except:
 		erreur_sftp = True
-		messageErreur("Connexion SFTP au serveur échouée")
+		messageConsoleLog("Erreur", "Connexion SFTP au serveur échouée")
 		return -4
 
 """
@@ -323,7 +321,7 @@ def envoi_bdd(nom_fichier):
 		return -1
 
 	except:
-		messageErreur("Tentative de reconnexion au serveur")
+		messageConsoleLog("Erreur", "Tentative de reconnexion au serveur")
 		deconnexion_sftp()
 		connexion_sftp()
 		return -2
@@ -348,7 +346,8 @@ def gestion_envoi_bdd(nom_fichier):
 
 			except:
 				time.sleep(5 * nbr_essais)
-		messageErreur(
+		messageConsoleLog(
+			"Erreur",
 			f"Envoi du fichier \"{DOSSIER_BDD + nom_fichier}\" échoué"
 		)
 		return -1
@@ -365,7 +364,7 @@ def gestion_envoi_bdd(nom_fichier):
 """
 def recup_mesure(type_mesure):
 	if (type_mesure != "temp" and type_mesure != "humi"):
-		messageErreur("recup_mesure | Type de mesure inconnu")
+		messageConsoleLog("Erreur", "recup_mesure | Type de mesure inconnu")
 		return None
 
 	# Récupération de la mesure (arrondie à une décmiale près)
@@ -429,14 +428,14 @@ def recup_mesure(type_mesure):
 """
 def recup_borne(type_operation, type_mesure):
 	if (type_operation != "MIN" and type_operation != "MAX"):
-		messageErreur("recup_borne | Type d'opération inconnu")
+		messageConsoleLog("Erreur", "recup_borne | Type d'opération inconnu")
 		return -1
 
 	elif (
 		type_mesure != "max_temp" and type_mesure != "min_temp" and
 		type_mesure != "max_humi" and type_mesure != "min_humi"
 	):
-		messageErreur("recup_borne | Type de mesure inconnu")
+		messageConsoleLog("Erreur", "recup_borne | Type de mesure inconnu")
 		return -2
 
 	curseur_mesures.execute(f"""
@@ -480,7 +479,7 @@ def enregistrement_mesures(temperature, humidite):
 """
 def enregistrer_bornes(mesure, type_mesure):
 	if (type_mesure != "temp" and type_mesure != "humi"):
-		messageErreur("enregistrer_bornes | Type de mesure inconnu")
+		messageConsoleLog("Erreur", "enregistrer_bornes | Type de mesure inconnu")
 		return -1
 
 	elif (mesure == None):
@@ -588,7 +587,8 @@ def copie_sauvegarde_bdd(chemin_sauv, nom_bdd):
 		return 0
 
 	except:
-		messageErreur(
+		messageConsoleLog(
+			"Erreur",
 			f"Sauvegarde de la base de données \"{DOSSIER_BDD + nom_bdd}\" " +
 			"échouée"
 		)
@@ -687,10 +687,7 @@ def afficher_mesures(temperature, humidite):
 os.system("clear")
 status_message = ("connecté" if mode_local == False else "local")
 
-messageDate = f"|Info| Mode {status_message}"
-enregistrerLogs(messageDate)
-
-print(f"{couleur.BLEU_CLAIR}{messageDate}{couleur.FIN_STYLE}")
+messageConsoleLog("Info", f"Mode {status_message}")
 print(
 	f"{couleur.BLEU_FONCE}|Info| Les messages d'erreur s'afficheront dans " +
 	f"cette console et sont enregistrés dans le fichier \"{CHEMIN_LOGS}\"" +
