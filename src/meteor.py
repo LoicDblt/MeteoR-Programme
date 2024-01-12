@@ -53,19 +53,19 @@ import shutil
 import sqlite3
 import time
 
-## Logs des erreurs ############################################################
+## Journalisation des erreurs ##################################################
 """
-@brief	Enregistre un message dans le fichier de logs
+@brief	Enregistre un message dans le fichier de journalisation
 
 @param	message	Le message à enregistrer
 """
 def enregistrer_log(message):
-	with open(CHEMIN_LOGS, "a") as file:
+	with open(CHEMIN_JOURNAUX, 'a') as file:
 		file.write(message + "\n")
 
 """
 @brief	Affiche un message d'erreur dans la console et l'enregistre dans le
-		fichier de logs
+		fichier de journalisation
 
 @param	message	Le message d'erreur à afficher
 """
@@ -84,33 +84,33 @@ def message_console_log(typeErr, message):
 
 ## Variables et initialisation #################################################
 # Dossier de sauvegarde des informations
-DOSSIER_JOURNAUX = os.path.expanduser('~') + "/MeteoR-Journaux/"
+DOSSIER_STOCKAGE = os.path.expanduser('~') + "/MeteoR-Stockage/"
 
-# Chemin fichier de logs
-NOM_LOGS = "meteor_" + str(int(time.time())) + ".log"
-DOSSIER_LOGS = DOSSIER_JOURNAUX + "logs/"
-CHEMIN_LOGS = DOSSIER_LOGS + NOM_LOGS
+# Chemin et nom du fichier de journalisation
+NOM_JOURNAL = "meteor_" + str(int(time.time())) + ".log"
+DOSSIER_JOURNAUX = DOSSIER_STOCKAGE + "journaux/"
+CHEMIN_JOURNAUX = DOSSIER_JOURNAUX + NOM_JOURNAL
 
 # Chemins et noms des bases de données
 NOM_BDD_MESURES = "mesures.db"
 NOM_BDD_MOYENNES = "moyennes.db"
 
-DOSSIER_BDD = "../bdd/"
+DOSSIER_BDD = DOSSIER_STOCKAGE + "bdd/"
 CHEMIN_BDD_MESURES = DOSSIER_BDD + NOM_BDD_MESURES
 CHEMIN_BDD_MOYENNES = DOSSIER_BDD + NOM_BDD_MOYENNES
 
-DOSSIER_SAUV = DOSSIER_JOURNAUX + "sauvegardes/"
+DOSSIER_SAUV = DOSSIER_STOCKAGE + "sauvegardes/"
 CHEMIN_SAUV_MESURES = DOSSIER_SAUV + "mesures/"
 CHEMIN_SAUV_MOYENNES = DOSSIER_SAUV + "moyennes/"
 
 # Créé les dossiers
 ## Dossier de sauvegarde des informations
+if (os.path.isdir(DOSSIER_STOCKAGE) == False):
+	os.mkdir(DOSSIER_STOCKAGE)
+
+## Dossier de journalisation
 if (os.path.isdir(DOSSIER_JOURNAUX) == False):
 	os.mkdir(DOSSIER_JOURNAUX)
-
-## Dossier de logs
-if (os.path.isdir(DOSSIER_LOGS) == False):
-	os.mkdir(DOSSIER_LOGS)
 
 ## Dossier de sauvagarde
 if (os.path.isdir(DOSSIER_SAUV) == False):
@@ -693,7 +693,7 @@ status_message = ("connecté" if mode_local == False else "local")
 message_console_log("Info", f"Mode {status_message}")
 print(
 	f"{couleur.BLEU_FONCE}|Info| Les messages d'erreur s'afficheront dans " +
-	f"cette console et sont enregistrés dans le fichier \"{CHEMIN_LOGS}\"" +
+	f"cette console et sont enregistrés dans le fichier \"{CHEMIN_JOURNAUX}\"" +
 	f"{couleur.FIN_STYLE}\n"
 )
 
