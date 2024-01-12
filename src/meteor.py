@@ -84,7 +84,7 @@ def message_console_log(typeErr, message):
 
 ## Variables et initialisation #################################################
 # Dossier de sauvegarde des informations
-DOSSIER_JOURNAUX = "../../MeteoR-Journaux/"
+DOSSIER_JOURNAUX = os.path.expanduser('~') + "/MeteoR-Journaux/"
 
 # Chemin fichier de logs
 NOM_LOGS = "meteor_" + str(int(time.time())) + ".log"
