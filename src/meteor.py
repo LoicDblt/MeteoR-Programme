@@ -87,7 +87,8 @@ def message_console_log(typeErr, message):
 DOSSIER_STOCKAGE = os.path.expanduser('~') + "/MeteoR-Stockage/"
 
 # Chemin et nom du fichier de journalisation
-NOM_JOURNAL = "meteor_" + str(int(time.time())) + ".log"
+NOM_JOURNAL = ("meteor_" + dt.datetime.now().strftime("%d-%m-%Y_%H-%M-%S") +
+	".log")
 DOSSIER_JOURNAUX = DOSSIER_STOCKAGE + "journaux/"
 CHEMIN_JOURNAUX = DOSSIER_JOURNAUX + NOM_JOURNAL
 
